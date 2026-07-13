@@ -480,12 +480,18 @@ lemma permute_monotone {l : Type} [LE l] [OrderBot l] {a b : Lpo l} {X Y : Set N
   · simp only [Lpo.nodes, Lpo.form]
     intro x hx; ext v; constructor
     · intro ⟨hx, hform⟩; use hext.cod_sub hx
-      conv => arg 1; exact (congrArg _ (hext.symm.extend ⟨x, hx⟩)).symm.trans (hle.form _ (Subtype.coe_prop _)).symm
+      conv =>
+        arg 1
+        exact (congrArg _ (hext.symm.extend ⟨x, hx⟩)).symm.trans
+          (hle.form _ (Subtype.coe_prop _)).symm
       refine (congrFun (Form.permute_monotone hext ?_) _).mp hform
       refine Form.DependsOn.monotone _ ?_ (a.property.form _ (Subtype.coe_prop _)).1
       intro y hrel; exact (a.property.rel_dom hrel).1
     · intro ⟨hx', hform⟩; use hx
-      conv at hform => arg 1; exact (congrArg _ (hext.symm.extend ⟨x, hx⟩)).symm.trans (hle.form _ (Subtype.coe_prop _)).symm
+      conv at hform =>
+        arg 1
+        exact (congrArg _ (hext.symm.extend ⟨x, hx⟩)).symm.trans
+          (hle.form _ (Subtype.coe_prop _)).symm
       refine (congrFun (Form.permute_monotone hext ?_) _).mpr hform
       refine Form.DependsOn.monotone _ ?_ (a.property.form _ (Subtype.coe_prop _)).1
       intro y hrel; exact (a.property.rel_dom hrel).1

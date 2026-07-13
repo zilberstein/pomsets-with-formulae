@@ -1,7 +1,6 @@
 import Pom.Lpo.Basic
-import Pom.Lpo.Order
 import Pom.Lpo.Isomorphism
-import Pom.Lpo.FinApprox
+import Pom.Lpo.Order.FinApprox
 
 def Pom (l : Type) [Bot l] : Type := Quotient (@Lpo.instSetoid l _)
 

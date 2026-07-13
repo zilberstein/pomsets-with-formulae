@@ -1,6 +1,6 @@
 import DomainTheory.Compactness
 
-import Pom.Lpo.FinApprox
+import Pom.Lpo.Order.FinApprox
 
 lemma way_below_finnaprox {l : Type}
     [DCPO l] [OrderBot l]
@@ -86,5 +86,5 @@ theorem ext_continuous {l X : Type}
   · refine DSet.dSup_le ?_; rintro _ ⟨α, hα, rfl⟩
     refine DSet.dSup_le ?_; rintro _ ⟨β, hβ, rfl⟩
     refine DSet.le_dSup ?_; refine ⟨β, ?_, rfl⟩
-    simp [Lpo.finapprox'] at *; refine le_trans hβ ?_
+    simp only [Lpo.finapprox', Set.mem_setOf_eq] at *; refine le_trans hβ ?_
     exact DSet.le_dSup hα

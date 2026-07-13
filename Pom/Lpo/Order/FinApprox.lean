@@ -62,7 +62,8 @@ noncomputable def trunc_base {l : Type} [Bot l] (a : Lpo l) (n : ℕ) : Lpo_base
 
 lemma trunc_valid {l : Type} [Bot l] (a : Lpo l) (n : ℕ) :
     IsValidLpo (trunc_base a n) := by
-  unfold trunc_base; constructor <;> simp
+  unfold trunc_base; constructor <;>
+      simp only [Set.mem_setOf_eq, not_and, not_le, ite_eq_right_iff, and_imp]
   · intro x y hr hx hy
     rcases a.property.rel_dom hr with ⟨hxa, hya⟩
     exact ⟨⟨hxa, hx⟩, hya, hy⟩
@@ -135,7 +136,9 @@ lemma trunc_nodes {l : Type} [Bot l] {a : Lpo l} {n : ℕ} :
 
 lemma trunc_le {l : Type} [Preorder l] [OrderBot l] (a : Lpo l) (n : ℕ) :
   a.trunc n ≤ a := by
-  constructor <;> simp [Lpo.trunc, Lpo.trunc_base, Lpo.nodes, Lpo.rel, Lpo.lab, Lpo.form]
+  constructor <;>
+    simp only [Lpo.trunc, Lpo.trunc_base, Lpo.nodes, Lpo.rel, Lpo.lab, Lpo.form, Set.mem_setOf_eq,
+      eq_iff_iff, and_iff_left_iff_imp, and_imp, Set.sep_subset, ite_eq_left_iff, not_le]
   · intro x hx y hyx; simp only [Set.mem_setOf_eq] at *
     refine ⟨(a.property.rel_dom hyx).1, ?_⟩
     exact (le_of_lt (lev_mono hyx)).trans hx.2
@@ -462,7 +465,7 @@ def finapprox' {l : Type} [PartialOrder l] [OrderBot l] (α : Lpo l) : DSet (Lpo
       exact ⟨⟨β, hfin⟩, hle⟩
 }
 
-lemma finapprox_convert  {l : Type} [PartialOrder l] [OrderBot l]
+lemma finapprox_convert {l : Type} [PartialOrder l] [OrderBot l]
     {α : Lpo l} {α' : Lpofin l} :
     α'.val ∈ α.finapprox ↔ α' ∈ α.finapprox' := by
   constructor
@@ -475,7 +478,7 @@ lemma finapprox'_mono {l : Type} [PartialOrder l] [OrderBot l] :
 
 theorem sup_finapprox_eq_self {l : Type} [DCPO l] [OrderBot l] {α : Lpo l} :
     α = (finapprox α).dSup := by
-  simp [DSet.dSup, DCPO.dSup, lpo_base_sup]; ext x y
+  simp only [DSet.dSup, DCPO.dSup, lpo_base_sup]; ext x y
   · simp only [nodes, Set.mem_iUnion, exists_prop]
     constructor
     · intro hx; obtain ⟨n, hlev⟩ := lev_finite hx
@@ -611,7 +614,7 @@ noncomputable def permute_sup {l : Type} [DCPO l] [OrderBot l]
   left_inv := by
     intro x; ext; exact permute_inv c₁ c₂ en he _ _ _
   right_inv := by
-    intro x; ext; simp; exact permute_inv' c₁ c₂ en he _ _ _
+    intro x; ext; exact permute_inv' c₁ c₂ en he _ _ _
 }
 
 lemma le_permute_sup {l : Type} [DCPO l] [OrderBot l]

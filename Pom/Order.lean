@@ -90,7 +90,9 @@ lemma permute_le_lev_nodes {l : Type} [LE l] [Bot l] {α : Lpo l} {X : Set Node}
     let e' :
         { x | x ∈ α.nodes ∧ α.rel.lev x = n } ≃
         { x | x ∈ (α.permute e).nodes ∧ (α.permute e).rel.lev x = n } := {
-      toFun x := ⟨e ⟨x, x.property.1⟩, ⟨Subtype.coe_prop _, Eq.trans (Lpo.permute_lev _ _).symm x.property.2⟩⟩
+      toFun x :=
+        ⟨e ⟨x, x.property.1⟩,
+          ⟨Subtype.coe_prop _, Eq.trans (Lpo.permute_lev _ _).symm x.property.2⟩⟩
       invFun y := ⟨e.symm ⟨y, y.property.1⟩, by {
         refine ⟨Subtype.coe_prop _, Eq.trans ?_ y.property.2⟩
         refine (Lpo.permute_lev e (Subtype.coe_prop _)).trans ?_
@@ -126,8 +128,8 @@ lemma permute_le_self_lab {l : Type} [PartialOrder l] [OrderBot l] {α : Lpo l}
   obtain ⟨i, hlev⟩ := lev_finite hx
   obtain ⟨n, ⟨e'⟩⟩ := (α.property.rel.fin_lev i).exists_equiv_fin
   have hlab {z} (hz : z ∈ α.nodes) := hle.lab (e ⟨_, hz⟩)
-  simp only [Lpo.lab, Lpo.permute, Subtype.exists, exists_and_right, Subtype.coe_prop,
-    ↓reduceDIte, Subtype.coe_eta, Equiv.symm_apply_apply] at hlab
+  simp only [Lpo.lab, Lpo.permute, Subtype.coe_prop,↓reduceDIte, Subtype.coe_eta,
+    Equiv.symm_apply_apply] at hlab
   simp only [Lpo.permute, Lpo.lab, dif_pos hx]
   have hn : 1 ≤ n := by
     refine Nat.succ_le_of_lt ?_

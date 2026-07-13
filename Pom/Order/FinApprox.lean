@@ -6,7 +6,7 @@ import Mathlib.Order.KonigLemma
 import DomainTheory.Compactness
 
 import Pom.Order
-import Pom.Lpo.FinApprox
+import Pom.Lpo.Order.FinApprox
 
 def Pomfin (l : Type) [Bot l] : Type := Quotient (@Lpofin.instSetoid l _)
 
@@ -94,8 +94,8 @@ lemma trunc_le {l : Type} [PartialOrder l] [OrderBot l] (p : Pom l) (n : ℕ) :
   obtain ⟨α, rfl⟩ := p.exists_rep
   refine ⟨α.trunc n, rfl, α, rfl, Lpo.trunc_le _ _⟩
 
-lemma lpo_trunc_mem {l : Type} [Preorder l] [OrderBot l] {α : Lpo l} {p : Pom l} {n : ℕ} (h : α ∈ p) :
-    α.trunc n ∈ p.trunc n := by
+lemma lpo_trunc_mem {l : Type} [Preorder l] [OrderBot l] {α : Lpo l} {p : Pom l} {n : ℕ}
+    (h : α ∈ p) : α.trunc n ∈ p.trunc n := by
   rw [h]; rfl
 
 end Pom
@@ -118,16 +118,16 @@ def dom {l : Type} [Bot l] [LE l] {a b : Lpo l} (t : TreeNode a b) : Set Node :=
 def range {l : Type} [Bot l] [LE l] {a b : Lpo l} (t : TreeNode a b) : Set Node :=
   t.f '' t.dom
 
-noncomputable def perm {l : Type} [Bot l] [LE l] {a b : Lpo l} (t : TreeNode a b) : t.dom ≃ t.range :=
+noncomputable def perm {l : Type} [Bot l] [LE l] {a b : Lpo l} (t : TreeNode a b) :
+    t.dom ≃ t.range :=
   Equiv.Set.imageOfInjOn t.f _ t.f_inj
 
 lemma f_eq_perm {l : Type} [Bot l] [LE l] {a b : Lpo l} {t : TreeNode a b} {x : Node}
     (hx : x ∈ t.dom) : t.f x = t.perm ⟨x, hx⟩ := rfl
 
-open Classical
-
 namespace Equiv
 
+open Classical in
 noncomputable def to_f {l : Type} [Bot l] [LE l] {a : Lpo l} {X : Set Node} {n : ℕ}
     (e : (a.trunc n).nodes ≃ X) : Node → Node :=
   fun x ↦ if hx : x ∈ (a.trunc n).nodes then e ⟨_, hx⟩ else default
@@ -241,7 +241,7 @@ instance {l : Type} [LE l] [Bot l] {a b : Lpo l} : LE (TreeNode a b) where
     t.n ≤ u.n ∧
     ∀ x ∈ t.dom, t.f x = u.f x
 
-instance {l : Type} [PartialOrder l] [OrderBot l] {a b: Lpo l} : Preorder (TreeNode a b) where
+instance {l : Type} [PartialOrder l] [OrderBot l] {a b : Lpo l} : Preorder (TreeNode a b) where
   le_refl t := by
     refine ⟨le_refl _, ?_⟩; intro _ _; rfl
   le_trans t u v := by
@@ -266,7 +266,7 @@ lemma le_and_n_eq {l : Type} [PartialOrder l] [OrderBot l] {a b : Lpo l} {t u : 
   intro x hx; unfold TreeNode.dom at hx; rw [← hn] at hx
   exact (hle.2 _ hx).symm
 
-lemma le_iff  {l : Type} [PartialOrder l] [OrderBot l] {a b : Lpo l} {t u : TreeNode a b} :
+lemma le_iff {l : Type} [PartialOrder l] [OrderBot l] {a b : Lpo l} {t u : TreeNode a b} :
     t ≤ u ↔ t.n ≤ u.n ∧ PermExt t.perm u.perm := by
   constructor
   · intro hle; refine ⟨hle.1, ?_, ?_⟩
@@ -288,8 +288,9 @@ lemma lt_iff {l : Type} [PartialOrder l] [OrderBot l] {a b : Lpo l} {t u : TreeN
     · intro ⟨hn, hex⟩; refine ⟨⟨Nat.le_of_lt hn, hex⟩, fun hc => ?_⟩
       have h := hc.1; linarith
 
-noncomputable def cover_of {l : Type} [PartialOrder l] [OrderBot l] {a b : Lpo l} {t u : TreeNode a b}
-    (hlt : t < u) : TreeNode a b :=
+open Classical in
+noncomputable def cover_of {l : Type} [PartialOrder l] [OrderBot l] {a b : Lpo l}
+    {t u : TreeNode a b} (hlt : t < u) : TreeNode a b :=
   have hle := Lpo.trunc_mono (le_refl a) (Nat.succ_le_of_lt (lt_iff.mp hlt).1)
   {
     n := t.n + 1
@@ -325,7 +326,8 @@ lemma cover_le {l : Type} [PartialOrder l] [OrderBot l] {a b : Lpo l} {t u : Tre
   · exact Nat.succ_le_of_lt (lt_iff.mp hlt).1
   · simp only [TreeNode.dom]; intro x hx; exact if_pos hx
 
-instance {l : Type} [PartialOrder l] [OrderBot l] {a b : Lpo l} : IsStronglyAtomic (TreeNode a b) where
+instance {l : Type} [PartialOrder l] [OrderBot l] {a b : Lpo l} :
+    IsStronglyAtomic (TreeNode a b) where
   exists_covBy_le_of_lt _ _ hlt := ⟨cover_of hlt, cover_is_cover hlt, cover_le hlt⟩
 
 lemma cov_by_iff {l : Type} [PartialOrder l] [OrderBot l] {a b : Lpo l} {t u : TreeNode a b} :
@@ -345,7 +347,8 @@ lemma cov_by_iff {l : Type} [PartialOrder l] [OrderBot l] {a b : Lpo l} {t u : T
       have hn₂ := (lt_iff.mp hu).1
       linarith
 
-noncomputable def covBy_injection {l : Type} [PartialOrder l] [OrderBot l] {a b : Lpo l} (t : TreeNode a b)
+noncomputable def covBy_injection {l : Type} [PartialOrder l] [OrderBot l] {a b : Lpo l}
+    (t : TreeNode a b)
     (u : {u // t ⋖ u})
     (x : { x // x ∈ a.nodes ∧  a.rel.lev x ≤ t.n + 1 }) :
     { x // x ∈ b.nodes ∧ b.rel.lev x ≤ t.n + 1} :=
@@ -516,7 +519,8 @@ lemma exists_extensible_perm {X Y : Set Node} (hinf : X.compl.Infinite) (hsub : 
       simp only [ne_eq, Bool.true_eq_false, not_false_eq_true]
 
 lemma exists_extension {l : Type} [PartialOrder l] [OrderBot l] (c : Chain (Pom l)) (n : ℕ)
-    (lc : LpoChain l c n) : ∃ lc' : LpoChain l c (n + 1), ∀ k : Fin n, lc.val k = lc'.val k.castSucc := by
+    (lc : LpoChain l c n) :
+    ∃ lc' : LpoChain l c (n + 1), ∀ k : Fin n, lc.val k = lc'.val k.castSucc := by
   match n with
   | Nat.zero =>
     have ⟨α, heq⟩ := (c 0).exists_rep
@@ -654,7 +658,7 @@ lemma lpo_chain_pom_chain_lub
   · simp only [lowerBounds, upperBounds, Set.mem_range, forall_exists_index,
       forall_apply_eq_imp_iff, Set.mem_setOf_eq]; intro p hp
     refine pom_ge_iff_ge_fin ?_; intro n
-    simp [Pom.trunc]
+    simp only [Pom.trunc]
     conv => lhs; rhs; exact Quotient.lift_mk _ _ _
     obtain ⟨i, hi⟩ :=  upper_bound_of_compact cl n
     refine le_trans ⟨(ωSup cl).trunc n, ?_, cl i, h i, hi⟩ (hp i)
