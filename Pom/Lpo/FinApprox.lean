@@ -24,11 +24,11 @@ def rel {l : Type} [Bot l] (a : Lpofin l) := a.val.rel
 def lab {l : Type} [Bot l] (a : Lpofin l) := a.val.lab
 def form {l : Type} [Bot l] (a : Lpofin l) := a.val.form
 
- def IsIsomorphic {l : Type} [Bot l] (a b : Lpofin l) : Prop :=
+def IsIsomorphic {l : Type} [Bot l] (a b : Lpofin l) : Prop :=
   a.val.IsIsomorphic b.val
 
 lemma isoEquivalence {l : Type} [Bot l] : Equivalence (@IsIsomorphic l _) := by {
-  constructor <;> simp [IsIsomorphic]
+  constructor
   -- Reflexivity
   · intro a; exact Lpo.isoEquivalence.refl a.val
   -- Symmetry
@@ -61,7 +61,7 @@ noncomputable def trunc_base {l : Type} [Bot l] (a : Lpo l) (n : ℕ) : Lpo_base
 }
 
 lemma trunc_valid {l : Type} [Bot l] (a : Lpo l) (n : ℕ) :
-    is_valid_lpo (trunc_base a n) := by
+    IsValidLpo (trunc_base a n) := by
   unfold trunc_base; constructor <;> simp
   · intro x y hr hx hy
     rcases a.property.rel_dom hr with ⟨hxa, hya⟩
@@ -696,7 +696,7 @@ lemma permute_continuous {l : Type} [DCPO l] [OrderBot l]
       · exact hx
     · ext v; constructor; all_goals {
         intro hform; exfalso
-        refine ((Subtype.property (p := is_valid_lpo) _).form_dom x).mp.mt ?_ ⟨_, hform⟩
+        refine ((Subtype.property (p := IsValidLpo) _).form_dom x).mp.mt ?_ ⟨_, hform⟩
         exact hx
       }
 

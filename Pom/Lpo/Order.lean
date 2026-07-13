@@ -6,7 +6,7 @@ variable {l : Type} [LE l] [Bot l]
 
 structure LE_Lpo (a b : Lpo l) : Prop where
   nodes : a.nodes ⊆ b.nodes
-  downcl : b.rel.is_down_closed a.nodes
+  downcl : b.rel.IsDownClosed a.nodes
   rel : ∀ x ∈ a.nodes, ∀ y ∈ a.nodes, a.rel x y = b.rel x y
   lab : ∀ x, a.lab x ≤ b.lab x
   form : ∀ x ∈ a.nodes, a.form x = b.form x
@@ -197,7 +197,7 @@ lemma lpo_directed_exists_preds (d : DSet (Lpo l)) {s : Set Node} (hfin : s.Fini
   let A : Set (Lpo l):= (fun x ↦ g x.val x.property) '' (Set.univ : Set ↑s)
   have hfin' : A.Finite := (Set.finite_univ_iff.mpr hfin).image _
   have hsub : A ⊆ d := by
-    intro α hα; simp [A] at hα
+    intro α hα; simp only [Set.image_univ, Set.mem_range, Subtype.exists, A] at hα
     rcases hα with ⟨x, hx, rfl⟩; exact (hg x hx).1
   obtain ⟨α, hα, hub⟩ := d.finite_upper_bound hsub hfin'
   refine ⟨α, hα, ?_⟩; intro x hx
@@ -209,7 +209,7 @@ lemma lpo_directed_exists_preds (d : DSet (Lpo l)) {s : Set Node} (hfin : s.Fini
   · right; exact hlab
 
 -- Lemma C.6 of CONCUR '25
-lemma lpo_directed_fin_lev (d : DSet (Lpo l))  (n : ℕ) :
+lemma lpo_directed_fin_lev (d : DSet (Lpo l)) (n : ℕ) :
     ∃ X, X.Finite ∧ X ⊆ ⋃ α ∈ d, α.nodes ∧ ∀ α ∈ d, { x ∈ α.nodes | α.rel.lev x = n } ⊆ X := by
   induction n using Nat.strong_induction_on with
   | h n ih =>
@@ -361,10 +361,10 @@ lemma form_directed_eq (d : DSet (Lpo l)) {x : Node} {α β : Lpo l}
   obtain ⟨γ, _, hαγ, hβγ⟩ := d.directed _ hα _ hβ
   rw [hαγ.form x hx, hβγ.form x hx']
 
-lemma lpo_sup_valid (d : DSet (Lpo l)) :
-    is_valid_lpo (lpo_base_sup d) := by
+lemma lpo_sup_valid (d : DSet (Lpo l)) : IsValidLpo (lpo_base_sup d) := by
   unfold lpo_base_sup
-  constructor <;> try simp
+  constructor <;>
+    simp only [Set.mem_iUnion, exists_prop, forall_exists_index, and_imp, not_exists, not_and]
   -- Relation Domain
   · intro x y a ha hrel
     rcases a.property.rel_dom hrel with ⟨hx, hy⟩
@@ -419,8 +419,8 @@ lemma le_lpo_sup (d : DSet (Lpo l)) {hv} :
     rcases b.property.rel_dom hr with ⟨hxb, hyb⟩
     refine (hac.rel _ hx _ hy).mpr ?_
     exact (hbc.rel _ hxb _ hyb).mp hr
-  · simp [Lpo.lab]; intro x; exact DSet.le_dSup ⟨a, ha, rfl⟩
-  · intro x hx; simp [Lpo.form]; ext v; refine ⟨fun hf => ⟨a, ha, hf⟩, ?_⟩
+  · simp only [Lpo.lab]; intro x; exact DSet.le_dSup ⟨a, ha, rfl⟩
+  · intro x hx; simp only [Lpo.form]; ext v; refine ⟨fun hf => ⟨a, ha, hf⟩, ?_⟩
     intro ⟨b, hb, hf⟩
     rcases d.directed _ ha _ hb with ⟨c, hc, hac, hbc⟩
     refine (congrFun (hac.form _ hx) _).mpr ?_
@@ -436,11 +436,13 @@ lemma lpo_sup_le (d : DSet (Lpo l)) {a : Lpo l} {hv}
     (ha : ∀ b ∈ d, b ≤ a) : ⟨lpo_base_sup d, hv⟩ ≤ a := by
   unfold lpo_base_sup; constructor
   · simp only [Lpo.nodes, Set.iUnion_subset_iff]; intro b hb; exact (ha _ hb).nodes
-  · simp only [Rel.is_down_closed, Lpo.nodes, Set.mem_iUnion, exists_prop, forall_exists_index,
+  · simp only [Rel.IsDownClosed, Lpo.nodes, Set.mem_iUnion, exists_prop, forall_exists_index,
       and_imp]
     intro x b hb hx y hyx; refine ⟨b, hb, ?_⟩
     exact (ha _ hb).downcl x hx y hyx
-  · simp [Lpo.nodes, Lpo.rel]; intro x b hb hx y c hc hy; constructor
+  · simp only [Lpo.nodes, Set.mem_iUnion, exists_prop, Lpo.rel, eq_iff_iff, forall_exists_index,
+      and_imp]
+    intro x b hb hx y c hc hy; constructor
     · intro ⟨e, he, hr⟩
       rcases e.property.rel_dom hr with ⟨hxe, hye⟩
       exact (iff_of_eq ((ha _ he).rel _ hxe _ hye)).1 hr
@@ -449,7 +451,7 @@ lemma lpo_sup_le (d : DSet (Lpo l)) {a : Lpo l} {hv}
       have hye := hce.nodes hy
       refine ⟨e, he, ?_⟩
       exact (iff_of_eq ((ha _ he).rel _ hxe _ hye)).2 hr
-  · simp [Lpo.lab]; intro x; refine DSet.dSup_le ?_
+  · simp only [Lpo.lab]; intro x; refine DSet.dSup_le ?_
     intro ℓ ⟨b, hb, hℓ⟩; subst hℓ; exact (ha _ hb).lab x
   · simp only [Lpo.nodes, Set.mem_iUnion, exists_prop, Lpo.form, forall_exists_index, and_imp]
     intro x b hb hx; ext v; constructor
@@ -502,7 +504,8 @@ lemma ωSup_lab {l : Type} [DCPO l] [OrderBot l] {c : Chain (Lpo l)} :
       monotone' _ _ hle := lab_monotone x (c.monotone' hle)
     } := by
   ext x
-  simp only [ωSup, Chain.to_dSet, DSet.dSup, DCPO.dSup, lpo_base_sup, Lpo.lab, DSet.image, Set.image]
+  simp only [ωSup, Chain.to_dSet, DSet.dSup, DCPO.dSup, lpo_base_sup, Lpo.lab, DSet.image,
+    Set.image]
   refine congrArg _ ?_; ext ℓ; simp only [Set.mem_range, exists_exists_eq_and, Set.mem_setOf_eq]
   refine exists_congr fun n ↦ Eq.congr rfl rfl
 

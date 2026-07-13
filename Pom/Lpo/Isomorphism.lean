@@ -180,14 +180,15 @@ noncomputable def permute {l : Type} [Bot l] {X : Set Node} (a : Lpo l)
   }
   property := by
     constructor <;>
-      try simp [dite_eq_right_iff, Rel.permute, not_exists, forall_exists_index]
+      try simp only [dite_eq_right_iff, Rel.permute, not_exists, forall_exists_index]
     · intro _ _ hx hy _; exact ⟨hx, hy⟩
     · intro _ hx hc; exact False.elim (hx hc)
     · constructor
       · intro _ _ _ ⟨hx, _, hxy⟩ ⟨_, hz, hyz⟩
         exact ⟨hx, hz, a.property.rel.trans hxy hyz⟩
       · intro _ _ ⟨_, _, hxy⟩ ⟨_, _, hyx⟩;
-        exact congr_arg Subtype.val (Equiv.injective _ (Subtype.ext (a.property.rel.antisymm hxy hyx)))
+        exact congr_arg Subtype.val
+          (Equiv.injective _ (Subtype.ext (a.property.rel.antisymm hxy hyx)))
       · intro _ ⟨_, _, hr⟩; exact a.property.rel.irrefl _ hr
       · intro x; by_cases hx : x ∈ X
         · obtain ⟨n, ⟨e'⟩⟩ :=
@@ -275,10 +276,7 @@ lemma permute'_eq {l : Type} [Bot l] {X Y : Set Node} {a b : Lpo l}
   unfold permute'; ext1 <;> subst h' <;>
     simp only [permute, Lpo.nodes, Lpo.rel, Lpo.form, Lpo.lab, cast_perm]
   · ext x y; refine exists_congr fun hx ↦ exists_congr fun hy ↦ ?_
-    refine Iff.of_eq (congr (congr ?_ ?_) ?_)
-    · rw [h]
-    · rfl
-    · rfl
+    refine Iff.of_eq (congr (congr ?_ rfl) rfl); rw [h]
   · ext x; simp only [Equiv.toFun_as_coe, Equiv.invFun_as_coe]
     nth_rewrite 1 [h]; rfl
   · ext x v; refine exists_congr fun hx ↦ ?_
@@ -305,7 +303,7 @@ lemma permute_congr {l : Type} [Bot l] {X Y : Set Node} (a b : Lpo l)
 
 lemma permute_refl {l : Type} [Bot l] (a : Lpo l) :
     a.permute (Equiv.refl a.nodes) = a := by
-  unfold permute; ext1 <;> simp [Lpo.nodes, Lpo.rel, Lpo.lab, Lpo.form]
+  unfold permute; ext1 <;> simp only [Lpo.nodes, Lpo.rel, Lpo.lab, Lpo.form]
   · ext x y; refine ⟨fun ⟨_, _, hr⟩ ↦ hr, fun hr ↦ ⟨?_, ?_, hr⟩⟩
     · exact (a.property.rel_dom hr).1
     · exact (a.property.rel_dom hr).2
@@ -408,13 +406,13 @@ lemma perm_extend_to {X X' Y : Set Node} (Z : Set Node) (e : X ≃ Y)
       if hx : x.val ∈ X then
         ⟨e ⟨x, hx⟩, (Set.mem_union _ _ _).mp (Or.inl (Subtype.coe_prop _))⟩
       else
-        ⟨e' ⟨x, (Set.mem_diff _).mpr ⟨x.property, hx⟩⟩, by simp⟩
+        ⟨e' ⟨x, (Set.mem_sdiff _).mpr ⟨x.property, hx⟩⟩, by simp⟩
     invFun x :=
       if hx : x.val ∈ Y then
         ⟨e.symm ⟨x, hx⟩, hsub (Subtype.coe_prop _)⟩
       else
         ⟨e'.symm ⟨x, (or_iff_right hx).mp ((Set.mem_union _ _ _).mp x.property)⟩,
-          ((Set.mem_diff _).mp (Subtype.coe_prop _)).1⟩
+          ((Set.mem_sdiff _).mp (Subtype.coe_prop _)).1⟩
     left_inv := by
       intro x; by_cases hx : x.val ∈ X
       · simp only [hx, ↓reduceDIte, Set.subset_union_left, Set.coe_inclusion, Subtype.coe_prop,
@@ -426,7 +424,7 @@ lemma perm_extend_to {X X' Y : Set Node} (Z : Set Node) (e : X ≃ Y)
       intro x; by_cases hx : x.val ∈ Y
       · simp only [hx, ↓reduceDIte, Subtype.coe_prop, Subtype.coe_eta, Equiv.apply_symm_apply]
       · simp only [hx, ↓reduceDIte, Subtype.coe_eta, Equiv.apply_symm_apply, dite_eq_right_iff]
-        intro h; exfalso; exact ((Set.mem_diff _).mp (Subtype.coe_prop _)).2 h
+        intro h; exfalso; exact ((Set.mem_sdiff _).mp (Subtype.coe_prop _)).2 h
   }
   constructor
   · intro x; simp only [Equiv.coe_fn_mk, Subtype.coe_prop, ↓reduceDIte,

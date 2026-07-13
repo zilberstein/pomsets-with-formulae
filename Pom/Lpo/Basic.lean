@@ -1,5 +1,4 @@
 import Init.Prelude
-import DomainTheory.DCPO
 import Mathlib.Data.ENat.Basic
 import Mathlib.Data.ENat.Defs
 import Mathlib.Data.ENat.Lattice
@@ -53,14 +52,11 @@ def is_succ_chain {α : Type} {n : ℕ} (ord : Rel α α) (c : FinChain n α) : 
     · refine lt_of_lt_of_le k.isLt ?_; simp
     · refine lt_of_lt_of_le (add_lt_add_of_lt_of_le k.isLt (le_refl _)) (le_refl _)
 
-def is_down_closed (ord : Rel Node Node) (X : Set Node) : Prop :=
+def IsDownClosed (ord : Rel Node Node) (X : Set Node) : Prop :=
   ∀ x ∈ X, ∀ y, ord y x → y ∈ X
 
 def IsUpClosed (ord : Rel Node Node) (X : Set Node) : Prop :=
   ∀ x ∈ X, ∀ y, ord x y → y ∈ X
-
-def up_closure (ord : Rel Node Node) (X : Set Node) : Set Node :=
-  { x | ∃ y ∈ X, ord y x }
 
 noncomputable def lev {a : Type} (ord : Rel a a) (x : a) : ENat :=
   sSup { n | ∃ k : ℕ, n = ↑k ∧ ∃ c : FinChain k a, ord.is_succ_chain c ∧ c.last = x }
@@ -89,7 +85,7 @@ structure Lpo_base (l : Type) where
   form : Node → Form Node
 attribute [ext] Lpo_base
 
-structure is_valid_lpo {l : Type} [Bot l] (a : Lpo_base l) : Prop where
+structure IsValidLpo {l : Type} [Bot l] (a : Lpo_base l) : Prop where
   rel_dom : ∀ {x y}, a.rel x y → x ∈ a.nodes ∧ y ∈ a.nodes
   lab_dom : ∀ x ∉ a.nodes, a.lab x = ⊥
   -- The order is valid
@@ -102,7 +98,7 @@ structure is_valid_lpo {l : Type} [Bot l] (a : Lpo_base l) : Prop where
           ∀ z, a.rel x z → a.form z ≤ a.form x
 
 
-def Lpo (l : Type) [Bot l] := { α : Lpo_base l // is_valid_lpo α }
+def Lpo (l : Type) [Bot l] := { α : Lpo_base l // IsValidLpo α }
 
 namespace Lpo
 
@@ -121,15 +117,17 @@ lemma not_in_dom_not_rel {l : Type} [Bot l] (a : Lpo l) (x y : Node)
   | inr hy => exact hy hc.2
 }
 
-def singleton {l : Type} [Bot l] (x : Node) (ℓ : l) : Lpo l :=
-  Subtype.mk {
+def singleton {l : Type} [Bot l] (x : Node) (ℓ : l) : Lpo l := {
+  val := {
     nodes := {x}
     rel _ _ := False
     lab y := if x = y then ℓ else ⊥
     form y := if x = y then Form.true else Form.false
-  } (by {
-    constructor <;> try simp
-    · intro y h hc; rw [hc] at h; contradiction
+  }
+  property := by
+    constructor <;> simp only
+    · intro _ _ hc; contradiction
+    · intro y hy; refine if_neg ?_; exact Ne.symm (Set.mem_singleton_iff.mpr.mt hy)
     · constructor
       · intro _ _ hxy _; contradiction
       · intro _ _ hc; contradiction
@@ -137,6 +135,7 @@ def singleton {l : Type} [Bot l] (x : Node) (ℓ : l) : Lpo l :=
       · intro y; simp only [Set.setOf_false, Set.finite_empty]
       · intro _; exact (Set.finite_singleton x).subset fun y ⟨hy, _⟩ ↦ hy
       · refine ⟨x, Set.mem_singleton _, ?_⟩; rintro y rfl hc; exact hc rfl
+    · intro _ _ _; trivial
     · intro y; constructor
       · rintro ⟨v, h⟩; by_cases heq : x = y
         · exact Eq.symm heq
@@ -144,8 +143,10 @@ def singleton {l : Type} [Bot l] (x : Node) (ℓ : l) : Lpo l :=
           simp [Form.false] at h
       · intro heq; use ∅
         rw [ite_cond_eq_true _ _ (eq_true (Eq.symm heq))]; simp [Form.true]
-    · exact Form.DependsOn.true
-  })
+    · rintro x rfl; constructor
+      · simp only [↓reduceIte]; exact Form.DependsOn.true
+      · intro _ hc; contradiction
+}
 
 end Lpo
 
@@ -155,11 +156,7 @@ lemma lpo_ext {l : Type} [Bot l] {a b : Lpo l}
     (hrel : a.rel = b.rel)
     (hlab : a.lab = b.lab)
     (hform : a.form = b.form) : a = b := by
-  refine Subtype.ext ?_; ext
-  · simp [Lpo.nodes] at hnodes; rw [hnodes]
-  · unfold Lpo.rel at hrel; rw [hrel]
-  · unfold Lpo.lab at hlab; rw [hlab]
-  · unfold Lpo.form at hform; rw [hform]
+  refine Subtype.ext ?_; ext1 <;> assumption
 
 lemma lpo_eq_iff {l : Type} [Bot l] {a b : Lpo l} :
   a = b ↔
@@ -257,9 +254,11 @@ lemma lev_finite {l : Type} [Bot l] {α : Lpo l} {x : Node} (hx : x ∈ α.nodes
   refine sSup_le ?_; rintro _ ⟨k, rfl, c, hc, rfl⟩
   have hcard : { x | ∃ k' : Fin (k + 1), k'.val < k ∧ x = c k'}.encard = ↑k := by
     refine Eq.trans (Set.encard_congr (Equiv.trans ?_ (Equiv.Set.univ _).symm))
-      ((Set.encard_univ _).trans (ENat.card_eq_coe_fintype_card.trans (congrArg _ (Fintype.card_fin k))))
+      ((Set.encard_univ _).trans
+        (ENat.card_eq_coe_fintype_card.trans (congrArg _ (Fintype.card_fin k))))
     rw [Set.coe_setOf]
-    have h x (hx : ∃ k' : Fin (k + 1), k'.val < k ∧ x = c k') : ∃ (y : Fin k), c y.castSucc = x := by
+    have h x (hx : ∃ k' : Fin (k + 1), k'.val < k ∧ x = c k') :
+        ∃ (y : Fin k), c y.castSucc = x := by
       obtain ⟨k', hk', rfl⟩ := hx; exact ⟨⟨k', hk'⟩, rfl⟩
     choose f hf using h
     refine ⟨fun x ↦ f x.val x.property,
