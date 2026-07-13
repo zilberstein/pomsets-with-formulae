@@ -17,10 +17,20 @@ def isAct (ℓ : Label act test) : Prop :=
   | Label.act _ => True
   | _ => False
 
+lemma isAct_iff (ℓ : Label act test) : ℓ.isAct ↔ ∃ a, ℓ = Label.act a := by
+  constructor
+  · intro h; cases ℓ <;> (try contradiction); exact ⟨_, rfl⟩
+  · rintro ⟨_, rfl⟩; trivial
+
 def isTest (ℓ : Label act test) : Prop :=
   match ℓ with
   | Label.test _ => True
   | _ => False
+
+lemma isTest_iff (ℓ : Label act test) : ℓ.isTest ↔ ∃ b, ℓ = Label.test b := by
+  constructor
+  · intro h; cases ℓ <;> (try contradiction); exact ⟨_, rfl⟩
+  · rintro ⟨_, rfl⟩; trivial
 
 end Label
 
@@ -91,54 +101,89 @@ instance {act test : Type} [PartialOrder act] [PartialOrder test] :
   }
 
 lemma label_dset {act test : Type} [Preorder act] [Preorder test] (d : DSet (Label act test)) :
-    (∀ ℓ ∈ d, ℓ = ⊥ ∨ ℓ = Label.fork) ∨
-    (∀ ℓ ∈ d, ℓ = ⊥ ∨ ℓ.isAct) ∨
-    (∀ ℓ ∈ d, ℓ = ⊥ ∨ ℓ.isTest) := by
-  have ⟨ℓ, hℓ⟩ := d.nonempty; cases ℓ with
-  | bot => sorry
-  | fork =>
-    left; intro ℓ' hℓ'
-    have ⟨z, _, hz, hle⟩ := d.directed _ hℓ _ hℓ'
-    rcases lab_is_fork_le hz with rfl
-    cases ℓ' <;> try contradiction
-    · left; rfl
-    · right; rfl
-  | act a =>
-    right; left; intro ℓ' hℓ'
-    have ⟨z, _, hz, hle⟩ := d.directed _ hℓ _ hℓ'
-    rcases lab_is_act_le hz with ⟨_, rfl, hle⟩
-    cases ℓ' <;> try contradiction
-    · left; rfl
-    · right; trivial
-  | test b =>
-    right; right; intro ℓ' hℓ'
-    have ⟨z, _, hz, hle⟩ := d.directed _ hℓ _ hℓ'
-    rcases lab_is_test_le hz with ⟨_, rfl, hle⟩
-    cases ℓ' <;> try contradiction
-    · left; rfl
-    · right; trivial
+    (d = DSet.singleton ⊥) ∨
+    (Label.fork ∈ d ∧ ∀ ℓ ∈ d, ℓ = ⊥ ∨ ℓ = Label.fork) ∨
+    ((∃ a, Label.act a ∈ d) ∧ ∀ ℓ ∈ d, ℓ = ⊥ ∨ ℓ.isAct) ∨
+    ((∃ b, Label.test b ∈ d) ∧ ∀ ℓ ∈ d, ℓ = ⊥ ∨ ℓ.isTest) := by
+  by_cases hd : d = DSet.singleton ⊥
+  · left; exact hd
+  · right
+    have ⟨ℓ, hℓ, hbot⟩ : ∃ ℓ ∈ d, ℓ ≠ ⊥ := by
+      by_contra h; simp only [ne_eq, not_exists, not_and, not_not] at h
+      apply hd; refine Subtype.ext ?_; ext ℓ; constructor
+      · intro hℓ; rw [h _ hℓ]; rfl
+      · rintro rfl; have ⟨ℓ, hℓ⟩ := d.nonempty
+        rw [h _ hℓ] at hℓ; exact hℓ
+    cases ℓ with
+    | bot => contradiction
+    | fork =>
+      left; refine ⟨hℓ, ?_⟩; intro ℓ' hℓ'
+      have ⟨z, _, hz, hle⟩ := d.directed _ hℓ _ hℓ'
+      rcases lab_is_fork_le hz with rfl
+      cases ℓ' <;> try contradiction
+      · left; rfl
+      · right; rfl
+    | act a =>
+      right; left; refine ⟨⟨a, hℓ⟩, ?_⟩; intro ℓ' hℓ'
+      have ⟨z, _, hz, hle⟩ := d.directed _ hℓ _ hℓ'
+      rcases lab_is_act_le hz with ⟨_, rfl, hle⟩
+      cases ℓ' <;> try contradiction
+      · left; rfl
+      · right; trivial
+    | test b =>
+      right; right; refine ⟨⟨b, hℓ⟩, ?_⟩; intro ℓ' hℓ'
+      have ⟨z, _, hz, hle⟩ := d.directed _ hℓ _ hℓ'
+      rcases lab_is_test_le hz with ⟨_, rfl, hle⟩
+      cases ℓ' <;> try contradiction
+      · left; rfl
+      · right; trivial
 
-def to_act_dset {act test : Type} [Preorder act] [Preorder test] (d : DSet (Label act test)) :
-    DSet (WithBot act) := {
-  val := (Option.some '' { a | Label.act a ∈ d }).insert ⊥
+def to_act_dset {act test : Type} [Preorder act] [Preorder test] (d : DSet (Label act test))
+    (h : ∃ a, Label.act a ∈ d) :
+    DSet act := {
+  val := { a | Label.act a ∈ d }
   property := by
-    constructor
-    · intro x hx y hy
-      rcases Set.mem_insert_iff.mp hx with rfl | ⟨a₁, ha₁, rfl⟩ <;>
-        rcases Set.mem_insert_iff.mp hy with rfl | ⟨a₂, ha₂, rfl⟩
-      · exact ⟨⊥, hx, le_refl _, le_refl _⟩
-      · exact ⟨some a₂, hy, bot_le, le_refl _⟩
-      · exact ⟨some a₁, hx, le_refl _, bot_le⟩
-      · have ⟨ℓ, hℓ, hle₁, hle₂⟩ := d.directed _ ha₁ _ ha₂
-        obtain ⟨a, rfl, _⟩ := lab_is_act_le hle₁
-        refine ⟨a, ?_, WithBot.coe_le_coe.mpr hle₁, WithBot.coe_le_coe.mpr hle₂⟩
-        exact Set.mem_insert_of_mem _ ((Set.mem_image _ _ _).mpr ⟨a, hℓ, rfl⟩)
-    · exact Set.insert_nonempty _ _
+    refine ⟨?_, h⟩; intro a₁ ha₁ a₂ ha₂
+    have ⟨ℓ, hℓ, hle₁, hle₂⟩ := d.directed _ ha₁ _ ha₂
+    obtain ⟨a, rfl, _⟩ := lab_is_act_le hle₁
+    exact ⟨a, hℓ, hle₁, hle₂⟩
 }
 
-instance {act test : Type} [DCPO act] [DCPO test] : DCPO (Label act test) where
-  dSup d := sorry
-  -- match label_dset d with
-  -- | Or.inl _ => sorry
-  -- | Or.inr (Or.inl _) => sorry
-  lubOfDirected := sorry
+def to_test_dset {act test : Type} [Preorder act] [Preorder test] (d : DSet (Label act test))
+    (h : ∃ b, Label.test b ∈ d) :
+    DSet test := {
+  val := { b | Label.test b ∈ d }
+  property := by
+    refine ⟨?_, h⟩; intro b₁ hb₁ b₂ hb₂
+    have ⟨ℓ, hℓ, hle₁, hle₂⟩ := d.directed _ hb₁ _ hb₂
+    obtain ⟨a, rfl, _⟩ := lab_is_test_le hle₁
+    exact ⟨a, hℓ, hle₁, hle₂⟩
+}
+
+lemma exists_lub {act test : Type} [DCPO act] [DCPO test] (d : DSet (Label act test)) :
+    ∃ ℓ, IsLUB d.val ℓ := by
+  rcases label_dset d with rfl | ⟨hfork, h⟩ | ⟨hact, h⟩ | ⟨htest, h⟩
+  · refine ⟨⊥, ?_, ?_⟩
+    · rintro ℓ rfl; trivial
+    · intro _ _; exact bot_le
+  · refine ⟨Label.fork, ?_, ?_⟩
+    · intro ℓ hℓ; rcases h _ hℓ with rfl | rfl <;> trivial
+    · intro ℓ hℓ; exact hℓ hfork
+  · refine ⟨Label.act (to_act_dset d hact).dSup, ?_, ?_⟩
+    · intro ℓ hℓ; rcases h _ hℓ with rfl | h
+      · exact bot_le
+      · obtain ⟨_, rfl⟩ := ℓ.isAct_iff.mp h; exact DSet.le_dSup hℓ
+    · intro ℓ hℓ; have ⟨_, hact⟩ := hact
+      obtain ⟨a, rfl, hle⟩ := lab_is_act_le (hℓ hact)
+      exact DSet.dSup_le fun _ ha ↦ hℓ ha
+  · refine ⟨Label.test (to_test_dset d htest).dSup, ?_, ?_⟩
+    · intro ℓ hℓ; rcases h _ hℓ with rfl | h
+      · exact bot_le
+      · obtain ⟨_, rfl⟩ := ℓ.isTest_iff.mp h; exact DSet.le_dSup hℓ
+    · intro ℓ hℓ; have ⟨_, htest⟩ := htest
+      obtain ⟨b, rfl, hle⟩ := lab_is_test_le (hℓ htest)
+      exact DSet.dSup_le fun _ hb ↦ hℓ hb
+
+noncomputable instance {act test : Type} [DCPO act] [DCPO test] : DCPO (Label act test) where
+  dSup d := (exists_lub d).choose
+  lubOfDirected d := (exists_lub d).choose_spec
