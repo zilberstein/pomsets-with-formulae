@@ -1,3 +1,4 @@
+import Mathlib.Tactic
 import Pom.Lpo.Basic
 
 namespace Lpo
@@ -15,11 +16,138 @@ noncomputable def par_base {l : Type} [Bot l] (x : Node) (ℓ : l) (α β : Lpo 
 }
 
 open Classical in
+lemma par_chain_bound_left {l : Type} [Bot l] {x y : Node} {α β : Lpo l}
+    (hx : x ∉ α.nodes) (hx' : x ∉ β.nodes) (hd : Disjoint α.nodes β.nodes)
+    (hy : y ∈ α.nodes) {n : ℕ} (c : FinChain n Node)
+    (hc : (par_base x (⊥ : l) α β Form.true Form.true).rel.is_succ_chain c)
+    (hlast : c.last = y) : ∃ q : ℕ, α.rel.lev y = q ∧ n ≤ q + 1 := by
+  -- By induction on $i$, we show that for all $i > 0$, $c i \in \alpha$.
+  have h_c_in_alpha : ∀ i : Fin (n + 1), i ≠ ⟨0, by linarith⟩ → c i ∈ α.nodes := by
+    intro i hi; induction i using Fin.reverseInduction with
+    | last =>
+      change c.last ∈ α.nodes
+      rw [hlast]
+      exact hy;
+    | cast i IH =>
+      have := hc i;
+      rcases this with ( ⟨ rfl, h | h ⟩ | h | h ) <;>
+        simp_all only [Set.disjoint_left, Fin.zero_eta, ne_eq, Fin.succ_ne_zero, not_false_eq_true,
+          forall_const];
+      · have := hc ⟨ i - 1, lt_of_le_of_lt ( Nat.pred_le _ ) i.2 ⟩
+        simp_all only [Fin.ext_iff, Fin.val_castSucc, Fin.coe_ofNat_eq_mod, Nat.zero_mod]
+        unfold par_base at this; grind +suggestions
+      · exact False.elim <| hd IH h;
+      · exact α.property.rel_dom h |>.1;
+      · grind +suggestions;
+  -- Define the tail chain d : FinChain (n-1) Node by d i=c(i+1) (if n>0);
+  by_cases hn : n = 0;
+  · obtain ⟨ q, hq ⟩ := lev_finite hy; use q; aesop;
+  · -- Define the tail chain d : FinChain (n-1) Node by d i=c(i+1).
+    obtain ⟨d, hd⟩ :
+        ∃ d : FinChain (n - 1) Node, ∀ i : Fin (n - 1 + 1), d i =
+        c ⟨i.val + 1,
+          Nat.succ_lt_succ (Nat.lt_of_lt_of_le i.2 (Nat.succ_le_of_lt (Nat.pred_lt hn)))⟩ :=
+      ⟨ fun i => c ⟨ i + 1,
+        by linarith [ Fin.is_lt i, Nat.sub_add_cancel ( Nat.one_le_iff_ne_zero.mpr hn ) ] ⟩,
+          fun i => rfl ⟩
+    generalize_proofs at *;
+    -- Prove that d is an α successor chain.
+    have hd_succ_chain : α.rel.is_succ_chain d := by
+      intro i
+      specialize hc ⟨ i.val + 1,
+        by linarith [ Fin.is_lt i, Nat.sub_add_cancel ( Nat.one_le_iff_ne_zero.mpr hn ) ] ⟩
+      simp_all only [Fin.zero_eta, ne_eq]
+      cases hc <;> simp_all +decide [ Set.disjoint_left ]
+      grind +suggestions;
+    -- Prove that d.last = y.
+    have hd_last : d.last = y := by
+      cases n <;> aesop;
+    -- Use the fact that d is an α successor chain ending at y to conclude that α.rel.lev y ≥ n - 1.
+    have h_lev_ge : α.rel.lev y ≥ n - 1 := by
+      refine le_csSup ?_ ?_ <;> norm_num +zetaDelta at *;
+      exact ⟨ n - 1, by cases n <;> aesop, d, hd_succ_chain, hd_last ⟩;
+    obtain ⟨ q, hq ⟩ := lev_finite hy;
+    refine ⟨ q, hq, ?_⟩
+    rw [ hq ] at h_lev_ge
+    refine Nat.le_of_not_lt fun h => absurd h_lev_ge ?_
+    rw [ ge_iff_le ] ; rw [ tsub_le_iff_right ] ; norm_cast; linarith
+
+open Classical in
+lemma par_chain_lower_left {l : Type} [Bot l] {x y : Node} {b : l} {α β : Lpo l}
+    {φ₁ φ₂ : Form Node} (hy : y ∈ α.nodes) :
+    α.rel.lev y + 1 ≤ (par_base x b α β φ₁ φ₂).rel.lev y := by
+  have ⟨q, hq⟩ := lev_finite hy
+  have ⟨c, hc⟩ := lev_finite_exists_finchain hq
+  have hpar_chain_bound_left :
+      ∃ c' : FinChain (q + 1) _, (par_base x b α β φ₁ φ₂).rel.is_succ_chain c' ∧ c'.last = y := by
+    use Fin.cons x c;
+    simp_all only [Rel.is_succ_chain, FinChain.last, Fin.cons_last, and_true]
+    intro k; induction k using Fin.inductionOn
+    · rcases q with ( _ | q )
+      · exact Or.inl ⟨ rfl, by aesop ⟩;
+      · exact Or.inl ( by have := hc.1 ⟨ 0, Nat.zero_lt_succ _ ⟩ ; have := α.2.rel_dom this; aesop )
+    · exact Or.inr <| Or.inl <| hc.1 _;
+  refine le_csSup ?_ ?_ <;> norm_num;
+  exact ⟨ q + 1, by aesop ⟩
+
+open Classical in
 lemma par_lev {l : Type} [Bot l] {x : Node} {b : l} {α β : Lpo l} {φ₁ φ₂ : Form Node}
-    (hx : x ∉ α.nodes) (hx' : x ∉ β.nodes) :
+    (hx : x ∉ α.nodes) (hx' : x ∉ β.nodes) (hd : Disjoint α.nodes β.nodes) :
     (par_base x b α β φ₁ φ₂).rel.lev =
-    fun y ↦ if x = y then 0 else if y ∈ α.nodes then α.rel.lev y + 1 else β.rel.lev y + 1 := by
-  sorry
+    fun y ↦ if x = y then 0 else if y ∈ α.nodes then α.rel.lev y + 1
+      else if y ∈ β.nodes then β.rel.lev y + 1 else 0 := by
+  ext y;
+  split_ifs;
+  · refine le_antisymm ?_ ?_;
+    · refine csSup_le ?_ ?_ <;> norm_num;
+      · refine ⟨ 0, 0, rfl, fun _ => x, ?_, ?_ ⟩ <;> simp only [ *, FinChain.last, Nat.reduceAdd ];
+        intro k; fin_cases k
+      · rintro _ n rfl c hc hlast; rcases n with ( _ | n )
+        · simp only [CharP.cast_eq_zero]
+        · have := hc ⟨ n, by linarith ⟩
+          simp_all only [FinChain.last, Fin.last, Nat.cast_add, Nat.cast_one, add_eq_zero,
+            Nat.cast_eq_zero, one_ne_zero, and_false] ;
+          unfold par_base at this; grind +suggestions;
+    · exact bot_le;
+  · refine le_antisymm ?_ ?_;
+    · refine csSup_le ?_ ?_;
+      · refine ⟨ _, ⟨ 0, rfl, fun _ => y, ?_, ?_ ⟩ ⟩
+        · intro i; fin_cases i
+        · simp only [FinChain.last]
+      · rintro n ⟨ k, rfl, c, hc, rfl ⟩;
+        obtain ⟨ q, hq ⟩ := par_chain_bound_left hx hx' hd ‹_› c hc rfl;
+        exact hq.1.symm ▸ mod_cast hq.2;
+    · convert par_chain_lower_left ‹_› using 1;
+  · refine le_antisymm ?_ ?_;
+    · refine csSup_le ?_ ?_;
+      · obtain ⟨ n, hn ⟩ := lev_finite ‹_›;
+        obtain ⟨ c, hc₁, hc₂ ⟩ := lev_finite_exists_finchain hn;
+        refine ⟨ _, ⟨ n, rfl, c, ?_, hc₂ ⟩ ⟩;
+        intro k; specialize hc₁ k; unfold par_base; aesop;
+      · rintro _ ⟨ k, rfl, c, hc, rfl ⟩;
+        have := par_chain_bound_left hx' hx ( hd.symm ) ‹_› ( c )
+          ( by intro i; specialize hc i; unfold par_base at *; simp_all only [Set.mem_union,
+            or_comm, or_assoc])
+          rfl;
+        rcases this with ⟨ q, hq₁, hq₂ ⟩ ; rw [ hq₁ ] ; norm_cast;
+    · have hswap := par_chain_lower_left
+          (x := x) (y := y) (b := b) (α := β) (β := α)
+          (φ₁ := φ₂) (φ₂ := φ₁) ‹y ∈ β.nodes›
+      have hrel :
+          (par_base x b β α φ₂ φ₁).rel = (par_base x b α β φ₁ φ₂).rel := by
+        funext a z
+        simp only [par_base]
+        aesop
+      rw [← hrel]
+      exact hswap
+  · unfold par_base;
+    refine csSup_eq_of_forall_le_of_forall_lt_exists_gt ?_ ?_ ?_ <;> norm_num;
+    · refine ⟨ 0, ⟨ 0, rfl, fun _ => y, ?_, ?_ ⟩ ⟩
+      · simp only [Rel.is_succ_chain, IsEmpty.forall_iff]
+      · rfl
+    · intro a n hn c hc hy; contrapose! hy; simp_all only [ne_eq, Nat.cast_eq_zero, FinChain.last]
+      intro H; have := hc ⟨ n - 1, Nat.sub_lt ( Nat.pos_of_ne_zero hy ) zero_lt_one ⟩
+      grind +suggestions
 
 lemma par_rel_valid {l : Type} [Bot l] {x : Node} {ℓ : l} {α : Lpo l} {β : Lpo l} {φ₁ φ₂ : Form Node}
     (hx₁ : x ∉ α.nodes) (hx₂ : x ∉ β.nodes) (h : Disjoint α.nodes β.nodes) :
@@ -83,7 +211,7 @@ lemma par_rel_valid {l : Type} [Bot l] {x : Node} {ℓ : l} {α : Lpo l} {β : L
       · right; left; exact (α.property.rel_dom hzy).2
       · right; right; exact (β.property.rel_dom hzy).2
   -- Finite Levels
-  · intro n; rw [par_lev hx₁ hx₂]; cases n with
+  · intro n; rw [par_lev hx₁ hx₂ h]; cases n with
     | zero =>
       refine (Set.finite_singleton x).subset ?_
       rintro y ⟨rfl | hy | hy, hlev⟩
@@ -92,7 +220,7 @@ lemma par_rel_valid {l : Type} [Bot l] {x : Node} {ℓ : l} {α : Lpo l} {β : L
         simp only [hx', ↓reduceIte, hy, Nat.cast_zero, add_eq_zero, one_ne_zero, and_false] at hlev
       · have hx' : x ≠ y := by rintro rfl; exact hx₂ hy
         have hy' := Set.disjoint_right.mp h hy
-        simp only [hx', ↓reduceIte, hy', Nat.cast_zero, add_eq_zero, one_ne_zero, and_false] at hlev
+        simp only [hx', ↓reduceIte, hy', hy, Nat.cast_zero, add_eq_zero, one_ne_zero, and_false] at hlev
     | succ n =>
       refine
           ((Set.finite_union.mpr
@@ -106,7 +234,7 @@ lemma par_rel_valid {l : Type} [Bot l] {x : Node} {ℓ : l} {α : Lpo l} {β : L
       · refine Set.mem_insert_of_mem _ (Or.inr ⟨hy, ?_⟩)
         have hx : x ≠ y := by rintro rfl; exact hx₂ hy
         have hy' := Set.disjoint_right.mp h hy
-        simp only [hx, ↓reduceIte, hy', Nat.cast_add, Nat.cast_one] at hlev
+        simp only [hx, ↓reduceIte, hy',hy,  Nat.cast_add, Nat.cast_one] at hlev
         exact WithTop.add_right_cancel ENat.one_ne_top hlev
   -- Single-Rooted
   · refine ⟨x, Or.inl rfl, ?_⟩
