@@ -1,6 +1,4 @@
-import Pcol.Semantics.Lpo.Basic
-import Pcol.Semantics.Lpo.FinApprox
-import Pcol.Semantics.Lpo.Order
+import Pom.Lpo.Order.FinApprox
 
 namespace Lpo
 open Classical
