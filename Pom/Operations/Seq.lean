@@ -1,5 +1,6 @@
-import Pcol.Semantics.Lpo.Operations.Seq
-import Pcol.Semantics.Pom.FinApprox
+import Pom.Lpo.Operations.Seq
+import Pom.Lpo.Operations.Seq.Isomorphism
+import Pom.Order.Extension
 
 namespace Pomfin
 
@@ -34,13 +35,13 @@ lemma exists_copy_fn {l : Type} [PartialOrder l] [OrderBot l] (α β : Lpofin l)
     have := e_base.injective (Subtype.val_injective heq)
     exact hne (Prod.mk_inj.mp this).1.symm
 
-noncomputable def seq {l : Type} [DCPO l] [OrderBot l] (p q : Pomfin l) : Pomfin l :=
+noncomputable def seq {l : Type} [PartialOrder l] [OrderBot l] (p q : Pomfin l) : Pomfin l :=
   Quotient.map₂
     (fun α β ↦ Lpofin.seq α β (Classical.choice (exists_copy_fn α β)))
     (fun _ _ h _ _ h' ↦ Lpofin.seq_isomorphic h h')
     p q
 
-lemma seq_monotone {l : Type} [DCPO l] [OrderBot l] {p p' q q' : Pomfin l}
+lemma seq_monotone {l : Type} [PartialOrder l] [OrderBot l] {p p' q q' : Pomfin l}
     (hle : p ≤ p') (hle' : q ≤ q') : seq p q ≤ seq p' q' := by
   obtain ⟨α, rfl, α', rfl, hle₁⟩ := Pomfin.le_iff.mp hle
   obtain ⟨β, rfl, β', rfl, hle₂⟩ := Pomfin.le_iff.mp hle'
@@ -73,7 +74,7 @@ lemma seq_monotone {l : Type} [DCPO l] [OrderBot l] {p p' q q' : Pomfin l}
   · refine (congrArg _ (Quotient.map₂_mk _ _ _ _)).trans ?_
     refine val_mem_to_pom.mp (Quotient.eq_iff_equiv.mpr ?_)
     exact Lpofin.seq_isomorphic (Setoid.refl _) (Setoid.refl _)
-  · refine Lpofin.seq_monotone hle₁ hle₂ ?_
+  · refine Lpofin.seq_monotone hle₁ ?_
     intro φ; exact (hf φ).2
 
 end Pomfin
@@ -85,7 +86,7 @@ noncomputable def seq {l : Type} [DCPO l] [OrderBot l] [ScottCompact l] :
   Pom.ext₂ (fun p q ↦ (Pomfin.seq p q).to_pom) Pomfin.seq_monotone
 
 lemma seq_monotone {l : Type} [DCPO l] [OrderBot l] [ScottCompact l] {p p' q q' : Pom l} :
-    p ≤ p' → q ≤ q' → seq p q ≤ seq p' q' := ext₂_monotone
+    p ≤ p' → q ≤ q' → seq p q ≤ seq p' q' := ext₂_monotone (hf := Pomfin.seq_monotone)
 
 open OmegaCompletePartialOrder
 
@@ -94,6 +95,6 @@ lemma seq_continuous {l : Type} [DCPO l] [OrderBot l] [ScottCompact l]
     seq (ωSup c) (ωSup c') = ωSup {
       toFun n := seq (c n) (c' n)
       monotone' _ _ hle := seq_monotone (c.monotone' hle) (c'.monotone' hle)
-    } := ext₂_continuous
+    } := ext₂_continuous (hf := Pomfin.seq_monotone)
 
 end Pom
