@@ -50,8 +50,6 @@ lemma exists_par (α β : Lpo l) :
   have ⟨i⟩ := exists_isomorphic_lpos α β
   exact ⟨_, i, rfl⟩
 
-noncomputable def par_fun (α β : Lpo l) : Lpo l := (exists_par hfork α β).choose
-
 noncomputable def par : Pom l → Pom l → Pom l :=
   Quotient.map₂ (fun α β ↦ (exists_par hfork α β).choose) <| by
     intro α₁ α₂ hα β₁ β₂ hβ
