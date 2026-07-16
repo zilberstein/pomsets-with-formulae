@@ -5,10 +5,10 @@ namespace Lpo
 
 lemma par_monotone {l : Type} [PartialOrder l] [OrderBot l]
     {x : Node} {ℓ ℓ' : l} {α α' β β' : Lpo l} {φ₁ φ₂ : Form Node}
-    (hx₁ : x ∉ α'.nodes) (hx₂ : x ∉ β'.nodes) (hd : Disjoint α'.nodes β'.nodes)
-    (hroot : ℓ ≠ ⊥)
-    (hφ₁ : Form.literal x ≤ φ₁ ∧ φ₁.DependsOn {x})
-    (hφ₂ : (Form.literal x).not ≤ φ₂ ∧ φ₂.DependsOn {x})
+    {hx₁ : x ∉ α'.nodes} {hx₂ : x ∉ β'.nodes} {hd : Disjoint α'.nodes β'.nodes}
+    {hroot : ℓ ≠ ⊥}
+    {hφ₁ : Form.literal x ≤ φ₁ ∧ φ₁.DependsOn {x}}
+    {hφ₂ : (Form.literal x).not ≤ φ₂ ∧ φ₂.DependsOn {x}}
     (hle : ℓ ≤ ℓ') (hle₁ : α ≤ α') (hle₂ : β ≤ β') :
     par_gen
       (fun h ↦ hx₁ (hle₁.nodes h))
