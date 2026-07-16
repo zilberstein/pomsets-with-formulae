@@ -5,6 +5,9 @@ namespace Equiv
 
 open Classical
 
+def singleton {α : Type} (x y : α) : ({x} : Set α) ≃ ({y} : Set α) :=
+  (Equiv.Set.singleton.{0} x).trans (Equiv.Set.singleton y).symm
+
 noncomputable def union {α : Type} {X X' Y Y' : Set α} (e₁ : X ≃ Y) (e₂ : X' ≃ Y')
     (h₁ : Disjoint X X') (h₂ : Disjoint Y Y') :
     ↑(X ∪ X') ≃ ↑(Y ∪ Y') :=
