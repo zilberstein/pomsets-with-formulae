@@ -80,4 +80,16 @@ theorem ext₂_continuous {X : Type} [OmegaCompletePartialOrder X]
   · refine ωSup_le _ _ ?_; intro n
     refine ext₂_monotone ?_ ?_ <;> exact le_ωSup _ _
 
+lemma continuous_of_eq_ext₂ {X : Type} [OmegaCompletePartialOrder X]
+    {f : Pom l → Pom l → X}
+    (hmono : ∀ {p p' q q'}, p ≤ p' → q ≤ q' → f p q ≤ f p' q')
+    (heq : f = ext₂ (fun p q ↦ f p.to_pom q.to_pom) hmono)
+    (c₁ c₂ : Chain (Pom l)) :
+    f (ωSup c₁) (ωSup c₂) = ωSup {
+      toFun n := f (c₁ n) (c₂ n)
+      monotone' _ _ hle := hmono (c₁.monotone' hle) (c₂.monotone' hle)
+    } := by
+  refine (congrFun₂ heq _ _).trans <| ext₂_continuous.trans (congrArg _ ?_)
+  ext n; exact congrFun₂ heq.symm _ _
+
 end Pom
