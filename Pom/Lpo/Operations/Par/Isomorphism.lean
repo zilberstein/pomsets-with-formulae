@@ -14,11 +14,41 @@ noncomputable def Equiv.par {x y : Node} {X X' Y Y' : Set Node} (e₁ : X ≃ Y)
 
 lemma par_form₁ {φ : Form Node} {x y : Node} (hφ : Form.literal x ≤ φ ∧ φ.DependsOn {x}) :
     Form.literal y ≤ φ.permute (Equiv.singleton x y) ∧
-    (φ.permute (Equiv.singleton x y)).DependsOn {y} := sorry
+    (φ.permute (Equiv.singleton x y)).DependsOn {y} := by
+  constructor
+  · intro v hy; apply hφ.1; exact ⟨⟨y, Set.mem_singleton y⟩, rfl, hy⟩
+  · intro v v' hd
+    apply hφ.2
+    refine Set.disjoint_left.mpr ?_
+    intro z hz hz'
+    simp only [Set.mem_singleton_iff] at hz'
+    subst z
+    apply Set.disjoint_left.mp hd ?_ (Set.mem_singleton y)
+    have himg : x ∈ Form.image (symmDiff v v') (Equiv.singleton x y).symm := by
+      rw [← Form.image_symmDiff]
+      exact hz
+    obtain ⟨w, _, hmem⟩ := himg
+    simpa only [Set.mem_singleton_iff.mp w.property] using hmem
 
 lemma par_form₂ {φ : Form Node} {x y : Node} (hφ : (Form.literal x).not ≤ φ ∧ φ.DependsOn {x}) :
     (Form.literal y).not ≤ φ.permute (Equiv.singleton x y) ∧
-    (φ.permute (Equiv.singleton x y)).DependsOn {y} := sorry
+    (φ.permute (Equiv.singleton x y)).DependsOn {y} := by
+  constructor
+  · intro v hy; apply hφ.1; intro hx
+    obtain ⟨w, _, hmem⟩ := hx
+    exact hy (Set.mem_singleton_iff.mp w.property ▸ hmem)
+  · intro v v' hd
+    apply hφ.2
+    refine Set.disjoint_left.mpr ?_
+    intro z hz hz'
+    simp only [Set.mem_singleton_iff] at hz'
+    subst z
+    apply Set.disjoint_left.mp hd ?_ (Set.mem_singleton y)
+    have himg : x ∈ Form.image (symmDiff v v') (Equiv.singleton x y).symm := by
+      rw [← Form.image_symmDiff]
+      exact hz
+    obtain ⟨w, _, hmem⟩ := himg
+    simpa only [Set.mem_singleton_iff.mp w.property] using hmem
 
 lemma par_permute {l : Type} [Bot l] {x : Node} {ℓ : l} {α β : Lpo l}
     {φ₁ φ₂ : Form Node}
