@@ -64,36 +64,27 @@ lemma guard_monotone {l : Type} [PartialOrder l] [OrderBot l] {ℓ ℓ' : l} (h�
 
 open OmegaCompletePartialOrder
 
-lemma guard_eq_ext {l : Type} [DCPO l] [OrderBot l] [ScottCompact l]
-    {ℓ : l} (h : ℓ ≠ ⊥) :
-    guard h = ext₂ (fun p q ↦ guard h p.to_pom q.to_pom) (guard_monotone h (le_refl _)) := by
-  ext p q
-  unfold ext₂; refine le_antisymm ?_ ?_
-  · refine pom_ge_iff_ge_fin fun n ↦ ?_
-    cases n with
-    | zero => exact le_of_eq_of_le (trunc_0 _) bot_le
-    | succ n =>
-      obtain ⟨α, β, x, hx, hx', hd, rfl, rfl, hmem⟩ := exists_rep_guard h p q
-      rw [hmem]
-      unfold trunc Pomfin.to_pom
-      conv => lhs; arg 3; exact Quotient.lift_mk _ _ _
-      conv => lhs; exact Quotient.map_mk _ _ _
-      refine le_of_eq_of_le ?_ (le_ωSup _ n)
-      conv => lhs; arg 2; exact Lpo.par_trunc n
-      simp only [DFunLike.coe]
-      symm; refine mem_guard h ?_ ?_ <;> {
-        conv => lhs; arg 3; exact Quotient.lift_mk _ _ _
-        exact Quotient.map_mk _ _ _
-      }
-  · refine ωSup_le _ _ fun n ↦ guard_monotone h (le_refl _) ?_ ?_ <;>
-    exact Pom.trunc_le _ n
-
 lemma guard_continuous {l : Type} [DCPO l] [OrderBot l] [ScottCompact l]
     {ℓ : l} (h : ℓ ≠ ⊥) (c₁ c₂ : Chain (Pom l)) :
     guard h (ωSup c₁) (ωSup c₂) = ωSup {
       toFun n := guard h (c₁ n) (c₂ n)
       monotone' _ _ hle := guard_monotone h (le_refl _) (c₁.monotone' hle) (c₂.monotone' hle)
-    } :=
-  continuous_of_eq_ext₂ (guard_monotone h (le_refl _)) (guard_eq_ext h) c₁ c₂
+    } := by
+  refine continuous_of_trunc_le_ext₂ (guard_monotone h (le_refl _)) ?_ c₁ c₂
+  intro p q n; cases n with
+  | zero => exact le_of_eq_of_le (trunc_0 _) bot_le
+  | succ n =>
+    obtain ⟨α, β, x, hx, hx', hd, rfl, rfl, hmem⟩ := exists_rep_guard h p q
+    rw [hmem]
+    unfold trunc Pomfin.to_pom
+    conv => lhs; arg 3; exact Quotient.lift_mk _ _ _
+    conv => lhs; exact Quotient.map_mk _ _ _
+    refine le_of_eq_of_le ?_ (le_ωSup _ n)
+    conv => lhs; arg 2; exact Lpo.par_trunc n
+    simp only [DFunLike.coe]
+    symm; refine mem_guard h ?_ ?_ <;> {
+      conv => lhs; arg 3; unfold trunc; exact Quotient.lift_mk _ _ _
+      exact Quotient.map_mk _ _ _
+    }
 
 end Pom

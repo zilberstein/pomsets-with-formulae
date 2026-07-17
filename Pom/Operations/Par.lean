@@ -100,36 +100,27 @@ lemma par_monotone {l : Type} [PartialOrder l] [OrderBot l] {fork : l} (hfork : 
 
 open OmegaCompletePartialOrder
 
-lemma par_eq_ext {l : Type} [DCPO l] [OrderBot l] [ScottCompact l]
-    {fork : l} (h : fork ≠ ⊥) :
-    par h = ext₂ (fun p q ↦ par h p.to_pom q.to_pom) (par_monotone h) := by
-  ext p q
-  unfold ext₂; refine le_antisymm ?_ ?_
-  · refine pom_ge_iff_ge_fin fun n ↦ ?_
-    cases n with
-    | zero => exact le_of_eq_of_le (trunc_0 _) bot_le
-    | succ n =>
-      obtain ⟨α, β, x, hx, hx', hd, rfl, rfl, hmem⟩ := exists_rep_par h p q
-      rw [hmem]
-      unfold trunc Pomfin.to_pom
-      conv => lhs; arg 3; exact Quotient.lift_mk _ _ _
-      conv => lhs; exact Quotient.map_mk _ _ _
-      refine le_of_eq_of_le ?_ (le_ωSup _ n)
-      conv => lhs; arg 2; exact Lpo.par_trunc n
-      simp only [DFunLike.coe]
-      symm; refine mem_par h ?_ ?_ <;> {
-        conv => lhs; arg 3; exact Quotient.lift_mk _ _ _
-        exact Quotient.map_mk _ _ _
-      }
-  · refine ωSup_le _ _ fun n ↦ par_monotone h ?_ ?_ <;>
-    exact Pom.trunc_le _ n
-
 lemma par_continuous {l : Type} [DCPO l] [OrderBot l] [ScottCompact l]
     {fork : l} (h : fork ≠ ⊥) (c₁ c₂ : Chain (Pom l)) :
     par h (ωSup c₁) (ωSup c₂) = ωSup {
       toFun n := par h (c₁ n) (c₂ n)
       monotone' _ _ hle := par_monotone h (c₁.monotone' hle) (c₂.monotone' hle)
-    } :=
-  continuous_of_eq_ext₂ (par_monotone h) (par_eq_ext h) c₁ c₂
+    } := by
+  refine continuous_of_trunc_le_ext₂ _ ?_ c₁ c₂
+  intro p q n; cases n with
+  | zero => exact le_of_eq_of_le (trunc_0 _) bot_le
+  | succ n =>
+    obtain ⟨α, β, x, hx, hx', hd, rfl, rfl, hmem⟩ := exists_rep_par h p q
+    rw [hmem]
+    unfold trunc Pomfin.to_pom
+    conv => lhs; arg 3; exact Quotient.lift_mk _ _ _
+    conv => lhs; exact Quotient.map_mk _ _ _
+    refine le_of_eq_of_le ?_ (le_ωSup _ n)
+    conv => lhs; arg 2; exact Lpo.par_trunc n
+    simp only [DFunLike.coe]
+    symm; refine mem_par h ?_ ?_ <;> {
+      conv => lhs; arg 3; unfold trunc; exact Quotient.lift_mk _ _ _
+      exact Quotient.map_mk _ _ _
+    }
 
 end Pom
