@@ -19,9 +19,11 @@ lemma branches_permute {α α' : Lpofin l} {e : α.nodes ≃ α'.nodes}
     simp only [extens, Finset.mem_filter]; constructor
     · refine (Set.Finite.mem_toFinset _).mpr ?_; exact Subtype.coe_prop _
     · intro hc
-      have := hsub hy; simp [extens] at this; have ⟨hy', h'⟩ := this; apply h'
+      have := hsub hy
+      simp only [extens, Finset.mem_filter] at this; have ⟨hy', h'⟩ := this; apply h'
       have hy' := (Set.Finite.mem_toFinset _).mp hy'; intro v hform
-      have ⟨⟨z, hz, hbot⟩, _, hform'⟩ := hc (Form.image v e) ((Lpo.permute_form_sat_iff hy').mp hform)
+      have ⟨⟨z, hz, hbot⟩, _, hform'⟩ :=
+        hc (Form.image v e) ((Lpo.permute_form_sat_iff hy').mp hform)
       refine ⟨⟨(e.symm ⟨_, hz⟩).val, Subtype.coe_prop _, ?_⟩, ?_⟩
       · refine Eq.trans ?_ hbot; exact (if_pos hz).symm
       · refine (Lpo.permute_form_sat_iff (Subtype.coe_prop _) (e := e)).mpr ?_

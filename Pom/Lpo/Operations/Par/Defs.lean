@@ -149,7 +149,8 @@ lemma par_lev {l : Type} [Bot l] {x : Node} {b : l} {α β : Lpo l} {φ₁ φ₂
       intro H; have := hc ⟨ n - 1, Nat.sub_lt ( Nat.pos_of_ne_zero hy ) zero_lt_one ⟩
       grind +suggestions
 
-lemma par_rel_valid {l : Type} [Bot l] {x : Node} {ℓ : l} {α : Lpo l} {β : Lpo l} {φ₁ φ₂ : Form Node}
+lemma par_rel_valid {l : Type} [Bot l] {x : Node} {ℓ : l} {α : Lpo l} {β : Lpo l}
+    {φ₁ φ₂ : Form Node}
     (hx₁ : x ∉ α.nodes) (hx₂ : x ∉ β.nodes) (h : Disjoint α.nodes β.nodes) :
     Rel.IsCausalityRel (par_base x ℓ α β φ₁ φ₂).rel (par_base x ℓ α β φ₁ φ₂).nodes := by
   constructor
@@ -220,7 +221,8 @@ lemma par_rel_valid {l : Type} [Bot l] {x : Node} {ℓ : l} {α : Lpo l} {β : L
         simp only [hx', ↓reduceIte, hy, Nat.cast_zero, add_eq_zero, one_ne_zero, and_false] at hlev
       · have hx' : x ≠ y := by rintro rfl; exact hx₂ hy
         have hy' := Set.disjoint_right.mp h hy
-        simp only [hx', ↓reduceIte, hy', hy, Nat.cast_zero, add_eq_zero, one_ne_zero, and_false] at hlev
+        simp only [hx', ↓reduceIte, hy', hy, Nat.cast_zero, add_eq_zero, one_ne_zero,
+          and_false] at hlev
     | succ n =>
       refine
           ((Set.finite_union.mpr

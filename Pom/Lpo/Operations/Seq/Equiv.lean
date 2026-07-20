@@ -3,11 +3,10 @@ import Mathlib.Logic.Equiv.Set
 
 namespace Equiv
 
-open Classical
-
 def singleton {α : Type} (x y : α) : ({x} : Set α) ≃ ({y} : Set α) :=
   (Equiv.Set.singleton.{0} x).trans (Equiv.Set.singleton y).symm
 
+open Classical in
 noncomputable def union {α : Type} {X X' Y Y' : Set α} (e₁ : X ≃ Y) (e₂ : X' ≃ Y')
     (h₁ : Disjoint X X') (h₂ : Disjoint Y Y') :
     ↑(X ∪ X') ≃ ↑(Y ∪ Y') :=
@@ -21,6 +20,7 @@ lemma union_symm {α : Type} {X X' Y Y' : Set α} {e₁ : X ≃ Y} {e₂ : X' �
   simp only [Equiv.symm_trans_apply, Equiv.sumCongr_symm, Equiv.symm_symm,
     Equiv.sumCongr_apply, Equiv.trans_apply]
 
+open Classical in
 lemma union_apply_left {α : Type} {X X' Y Y' : Set α} {e₁ : X ≃ Y} {e₂ : X' ≃ Y'}
     {h₁ : Disjoint X X'} {h₂ : Disjoint Y Y'} {x : α} (hx : x ∈ X) :
     (union e₁ e₂ h₁ h₂ ⟨x, Set.subset_union_left hx⟩).val = (e₁ ⟨x, hx⟩).val := by
@@ -28,6 +28,7 @@ lemma union_apply_left {α : Type} {X X' Y Y' : Set α} {e₁ : X ≃ Y} {e₂ :
   conv => arg 1; arg 1; arg 2; arg 3; exact Equiv.Set.union_apply_left _ hx
   simp only [Sum.map_inl, Equiv.Set.union_symm_apply_left, Set.subset_union_left, Set.coe_inclusion]
 
+open Classical in
 lemma union_apply_right {α : Type} {X X' Y Y' : Set α} {e₁ : X ≃ Y} {e₂ : X' ≃ Y'}
     {h₁ : Disjoint X X'} {h₂ : Disjoint Y Y'} {x : α} (hx : x ∈ X') :
     (union e₁ e₂ h₁ h₂ ⟨x, Set.subset_union_right hx⟩).val = (e₂ ⟨x, hx⟩).val := by

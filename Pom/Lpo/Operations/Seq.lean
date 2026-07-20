@@ -129,20 +129,18 @@ lemma seq_rel_valid {α β : Lpofin l} {f : CopyFn α β} :
       · have hy := extens_subset_nodes _ (hext hy)
         exact (α.val.property.form _ hx).2 _ (hroot _ hy heq) _ this
 
-lemma seq_valid(α β : Lpofin l) (f : CopyFn α β) :
+lemma seq_valid (α β : Lpofin l) (f : CopyFn α β) :
     IsValidLpo (seq_base α β f) := by
   constructor
   -- Rel Domain
   · intro x y hrel; cases hrel with
     | inl hrel =>
-        refine ⟨Or.inl ?_, Or.inl ?_⟩
-        · simp [Lpofin.nodes, Lpofin.rel] at *; exact (α.val.property.rel_dom hrel).1
-        · simp [Lpofin.nodes, Lpofin.rel] at *; exact (α.val.property.rel_dom hrel).2
+        have ⟨hx, hy⟩ := α.val.property.rel_dom hrel
+        exact ⟨Or.inl hx, Or.inl hy⟩
     | inr hrel =>
         rcases hrel with ⟨φ, (hrel | ⟨hx, hy⟩)⟩
-        · constructor <;> refine Or.inr (Set.mem_iUnion.mpr ⟨φ, ?_⟩)
-          · simp [Lpofin.nodes, Lpofin.rel] at *; exact ((f ⟨φ, _⟩).val.property.rel_dom hrel).1
-          · simp [Lpofin.nodes, Lpofin.rel] at *; exact ((f ⟨φ, _⟩).val.property.rel_dom hrel).2
+        · have ⟨hx, hy⟩ := (f ⟨φ, _⟩).val.property.rel_dom hrel
+          constructor <;> refine Or.inr (Set.mem_iUnion.mpr ⟨φ, ?_⟩) <;> assumption
         · refine ⟨Or.inl ?_, Or.inr (Set.mem_iUnion.mpr ⟨φ, ?_⟩)⟩
           · exact branch_implies_node φ hx
           · exact hy

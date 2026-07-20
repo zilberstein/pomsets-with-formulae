@@ -1,7 +1,6 @@
 import Pom.Lpo.Order.FinApprox
 
 namespace Lpofin
-open Classical
 
 variable {l : Type} [PartialOrder l] [OrderBot l]
 
@@ -23,6 +22,7 @@ lemma stuck_antitone : @Antitone (Lpofin l) _ _ _ stuck := by
     exact hform
 
 -- A node is in the exntensible set if it is possible for it not be stuck
+open Classical in
 noncomputable def extens (α : Lpofin l) : Finset Node :=
   α.nodes_finset.filter fun x ↦ ¬ α.form x ≤ α.stuck
 
@@ -31,6 +31,7 @@ lemma extens_not_bot {α : Lpofin l} {x : Node} : x ∈ α.extens → α.lab x �
   refine ⟨⟨x, ?_, heq⟩, hform⟩
   exact (α.val.property.form_dom x).mp ⟨v, hform⟩
 
+open Classical in
 lemma extens_subset_nodes {α : Lpofin l} : ∀ x ∈ α.extens, x ∈ α.nodes := by
   intro x hx; exact (Set.Finite.mem_toFinset _).mp (Finset.mem_filter.mp hx).1
 
@@ -41,6 +42,7 @@ lemma extens_monotone : @Monotone (Lpofin l) _ _ _ extens := by
   refine hstuck (fun v hform ↦ stuck_antitone hle v (hc v ?_))
   simp only [form]; rw [← hle.form x hx']; exact hform
 
+open Classical in
 lemma le_extens {α β : Lpofin l} (hle : α ≤ β) :
     α.extens = β.extens.filter fun x ↦ ¬ (β.form x ≤ α.stuck) := by
   ext x; constructor
@@ -80,6 +82,7 @@ lemma branches_finite (α : Lpofin l) : α.branches_set.Finite := by
 noncomputable def branches (α : Lpofin l) : Finset (Form Node) := α.branches_finite.toFinset
 
 lemma branches_set_monotone : @Monotone (Lpofin l) _ _ _ branches_set := by
+  classical
   rintro α β hle φ ⟨S, ⟨hne, hsub, hsat, hstuck, hmax⟩, hφ⟩; subst hφ
   refine ⟨S, ⟨hne, ?_, ?_, ?_, ?_⟩, ?_⟩
   · exact le_trans hsub (extens_monotone hle)
@@ -137,7 +140,8 @@ lemma le_branches_set {α β : Lpofin l} (hle : α ≤ β) :
         refine (β.val.property.form y (hle.nodes hbot.1)).2 _ hyx v ?_
         exact hsat ⟨_, hx⟩
     refine ⟨S, ⟨hne, ?_, ⟨v, ?_⟩, ?_, ?_⟩, ?_⟩
-    · intro x hx; rw [le_extens hle]; refine Finset.mem_filter.mpr ⟨?_, ?_⟩
+    · intro x hx; rw [le_extens hle]
+      classical refine Finset.mem_filter.mpr ⟨?_, ?_⟩
       · exact hsub hx
       · intro c; exact hstuck v hsat (c v (hsat ⟨x, hx⟩))
     · intro x; exact (congrFun (hle.form x (hS _ x.property)) _).mpr (hsat x)
