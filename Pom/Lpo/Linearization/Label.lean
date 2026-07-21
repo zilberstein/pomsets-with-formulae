@@ -1,6 +1,7 @@
 import Mathlib.Order.WithBot
 
 import DomainTheory.DCPO
+import DomainTheory.Compactness
 
 inductive Label (act : Type) (test : Type)
   | bot : Label act test
@@ -160,23 +161,24 @@ def to_test_dset {act test : Type} [Preorder act] [Preorder test] (d : DSet (Lab
     exact ⟨a, hℓ, hle₁, hle₂⟩
 }
 
-lemma exists_lub {act test : Type} [DCPO act] [DCPO test] (d : DSet (Label act test)) :
-    ∃ ℓ, IsLUB d.val ℓ := by
+lemma label_lub {act test : Type} [DCPO act] [DCPO test] (d : DSet (Label act test)) :
+    IsLUB d.val ⊥ ∨
+    (Label.fork ∈ d ∧ IsLUB d.val Label.fork) ∨
+    (∃ h, IsLUB d.val (Label.act (to_act_dset d h).dSup)) ∨
+    (∃ h, IsLUB d.val (Label.test (to_test_dset d h).dSup)) := by
   rcases label_dset d with rfl | ⟨hfork, h⟩ | ⟨hact, h⟩ | ⟨htest, h⟩
-  · refine ⟨⊥, ?_, ?_⟩
-    · rintro ℓ rfl; trivial
-    · intro _ _; exact bot_le
-  · refine ⟨Label.fork, ?_, ?_⟩
+  · left; exact isLUB_singleton
+  · right; left; refine ⟨hfork, ?_, ?_⟩
     · intro ℓ hℓ; rcases h _ hℓ with rfl | rfl <;> trivial
     · intro ℓ hℓ; exact hℓ hfork
-  · refine ⟨Label.act (to_act_dset d hact).dSup, ?_, ?_⟩
+  · right; right; left; refine ⟨hact, ?_, ?_⟩
     · intro ℓ hℓ; rcases h _ hℓ with rfl | h
       · exact bot_le
       · obtain ⟨_, rfl⟩ := ℓ.isAct_iff.mp h; exact DSet.le_dSup hℓ
     · intro ℓ hℓ; have ⟨_, hact⟩ := hact
       obtain ⟨a, rfl, hle⟩ := lab_is_act_le (hℓ hact)
       exact DSet.dSup_le fun _ ha ↦ hℓ ha
-  · refine ⟨Label.test (to_test_dset d htest).dSup, ?_, ?_⟩
+  · right; right; right; refine ⟨htest, ?_, ?_⟩
     · intro ℓ hℓ; rcases h _ hℓ with rfl | h
       · exact bot_le
       · obtain ⟨_, rfl⟩ := ℓ.isTest_iff.mp h; exact DSet.le_dSup hℓ
@@ -184,6 +186,32 @@ lemma exists_lub {act test : Type} [DCPO act] [DCPO test] (d : DSet (Label act t
       obtain ⟨b, rfl, hle⟩ := lab_is_test_le (hℓ htest)
       exact DSet.dSup_le fun _ hb ↦ hℓ hb
 
+
+lemma exists_lub {act test : Type} [DCPO act] [DCPO test] (d : DSet (Label act test)) :
+    ∃ ℓ, IsLUB d.val ℓ := by
+  rcases label_lub d with h | ⟨_, h⟩ | ⟨_, h⟩ | ⟨_, h⟩ <;> exact ⟨_, h⟩
+
 noncomputable instance {act test : Type} [DCPO act] [DCPO test] : DCPO (Label act test) where
   dSup d := (exists_lub d).choose
   lubOfDirected d := (exists_lub d).choose_spec
+
+instance {act test : Type}
+    [DCPO act] [ScottCompact act]
+    [DCPO test] [ScottCompact test] :
+    ScottCompact (Label act test) where
+  scottCompact ℓ := by
+    intro d hle
+    rcases label_lub d with h | ⟨hfork, h⟩ | ⟨hact, h⟩ | ⟨htst, h⟩ <;>
+      have hsup := le_of_le_of_eq hle <| (h.unique (DCPO.lubOfDirected d)).symm
+    · refine ⟨⊥, ?_, hsup⟩
+      have ⟨x, hx⟩ := d.nonempty
+      have := h.1 hx |> eq_bot_iff.mpr; subst this; exact hx
+    · exact ⟨Label.fork, hfork, hsup⟩
+    · cases ℓ <;> try contradiction
+      · have ⟨z, hz⟩ := d.nonempty; exact ⟨z, hz, bot_le⟩
+      · have ⟨z, hz, hle⟩ := ScottCompact.scottCompact _ _ hsup
+        refine ⟨Label.act z, hz, hle⟩
+    · cases ℓ <;> try contradiction
+      · have ⟨z, hz⟩ := d.nonempty; exact ⟨z, hz, bot_le⟩
+      · have ⟨z, hz, hle⟩ := ScottCompact.scottCompact _ _ hsup
+        refine ⟨Label.test z, hz, hle⟩

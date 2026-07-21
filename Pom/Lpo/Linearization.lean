@@ -9,20 +9,24 @@ namespace Linearization
 class Nondet (α : Type) where
   nondet {ι : Type} [Finite ι] : (ι → α) → α
 
+  nondet_congr {ι κ : Type} [Finite ι] [Finite κ]
+    {f : ι → α} {g : κ → α} (e : ι ≃ κ) (h : f = g ∘ e) :
+    nondet f = nondet g
+
 lemma nondet_convert {α ι : Type} {X Y : Finset ι} [Nondet α]
     {f : ↑X → α} (h : X = Y) :
     Nondet.nondet f = Nondet.nondet fun x : ↑Y ↦ f ⟨x.val, by subst h; exact x.property⟩ := by
   subst h; rfl
 
+open OmegaCompletePartialOrder
+
 class Sem (c : Type) (in_type out_type : Type) where
   sem : c → in_type → out_type
 
-open OmegaCompletePartialOrder
-
-class ContSem (c : Type) (in_type out_type : Type) [DCPO c] [DCPO out_type]
-  extends Sem c in_type out_type where
-  sem_mono : Monotone sem
-  sem_continuous : ωScottContinuous sem
+  sem_mono [Preorder c] [Preorder out_type] : Monotone sem
+  sem_continuous
+    [OmegaCompletePartialOrder c] [OmegaCompletePartialOrder out_type] :
+    ωScottContinuous sem
 
 class ContinuousMonad (t : Type → Type) where
   bind_mono {α β : Type} [Monad t] [Preorder (t α)] [Preorder (t β)] :
@@ -44,7 +48,11 @@ class Linearizable (t : Type → Type) (α : Type)
   bind_additive {ι : Type} [Finite ι] (κ : ι → t α) (f : α → t α) :
     nondet κ >>= f = nondet fun i ↦ κ i >>= f
 
+end Linearization
+
 namespace Lpofin
+
+open Linearization
 
 open Classical in
 noncomputable def next {l : Type} [Bot l] (a : Lpofin l) (s : Finset Node) : Finset Node :=
@@ -150,9 +158,9 @@ lemma next_iso {l : Type} [Bot l] [LE l] {s : Finset Node} {a b : Lpofin l}
 
 open Classical in
 lemma lin_node_mono {m : Type → Type} {α act test : Type}
-    [Linearizable m α] [∀ β, DCPO (m β)] [∀ β, OrderBot (m β)]
-    [DCPO act] [ContSem act α (m α)]
-    [DCPO test] [ContSem test α (m Bool)]
+    [Linearizable m α] [∀ β, Preorder (m β)] [∀ β, OrderBot (m β)]
+    [Preorder act] [Sem act α (m α)]
+    [Preorder test] [Sem test α (m Bool)]
     {s : Finset Node} {a b : Lpofin (Label act test)}
     (hbot : ∀ x ∈ s, x ∈ a.nodes ∨ ∃ z ∈ a.val.bots, z ∈ s ∧ b.rel z x)
     (hle : a ≤ b)
@@ -183,13 +191,13 @@ lemma lin_node_mono {m : Type → Type} {α act test : Type}
   | Label.act ac =>
     have ⟨ac', hlb, hale⟩ := lab_is_act_le <| le_of_eq_of_le hl.symm <| hle.lab x
     conv => rhs; arg 2; exact hlb
-    refine ContinuousMonad.bind_mono (ContSem.sem_mono hale _) ?_
+    refine ContinuousMonad.bind_mono (Sem.sem_mono hale _) ?_
     rw [← Finset.erase_inter]; intro τ
     apply ih'; rw [hl]; intro hc; contradiction
   | Label.test bb =>
     have ⟨bb', hlb, hble⟩ := lab_is_test_le <| le_of_eq_of_le hl.symm <| hle.lab x
     conv => rhs; arg 2; exact hlb
-    refine ContinuousMonad.bind_mono (ContSem.sem_mono hble _) ?_
+    refine ContinuousMonad.bind_mono (Sem.sem_mono hble _) ?_
     intro p; simp only; rw [filter_by_outcome_inter hle]
     refine ih ?_ ?_ σ
     · exact filter_by_outcome_sub_erase
@@ -205,9 +213,9 @@ lemma lin_node_mono {m : Type → Type} {α act test : Type}
 
 open Classical in
 theorem lin_rec_mono {m : Type → Type} {α act test : Type}
-    [Linearizable m α] [∀ β, DCPO (m β)] [∀ β, OrderBot (m β)]
-    [DCPO act] [ContSem act α (m α)]
-    [DCPO test] [ContSem test α (m Bool)]
+    [Linearizable m α] [∀ β, Preorder (m β)] [∀ β, OrderBot (m β)]
+    [Preorder act] [Sem act α (m α)]
+    [Preorder test] [Sem test α (m Bool)]
     {s : Finset Node} {a b : Lpofin (Label act test)}
     (hbot : ∀ x ∈ s, x ∈ a.nodes ∨ ∃ z ∈ a.val.bots, z ∈ s ∧ b.rel z x)
     (hle : a ≤ b) :
@@ -234,9 +242,9 @@ theorem lin_rec_mono {m : Type → Type} {α act test : Type}
       exact (Finset.mem_filter.mp hx).2.1 |> Finset.mem_inter.mp |> And.left
 
 theorem lin_mono {m : Type → Type} {α act test : Type}
-    [Linearizable m α] [∀ β, DCPO (m β)] [∀ β, OrderBot (m β)]
-    [DCPO act] [ContSem act α (m α)]
-    [DCPO test] [ContSem test α (m Bool)] :
+    [Linearizable m α] [∀ β, Preorder (m β)] [∀ β, OrderBot (m β)]
+    [PartialOrder act] [Sem act α (m α)]
+    [PartialOrder test] [Sem test α (m Bool)] :
     Monotone (lin : Lpofin (Label act test) → α → m α) := by
   intro α β hle; unfold lin
   rw [← Finset.inter_eq_right.mpr <| Lpofin.le_nodes hle]
@@ -246,46 +254,184 @@ theorem lin_mono {m : Type → Type} {α act test : Type}
   · right; refine ⟨z, hz, ?_, hrel⟩; refine β.property.mem_toFinset.mpr ?_
     exact hle.nodes hz.1
 
-open Classical in
-noncomputable def finset_equiv_image {X Y : Set Node} (e : X ≃ Y) (s : Finset Node) : Finset Node :=
-  s.filterMap
-    (fun x ↦ if hx : x ∈ X then some (e ⟨_, hx⟩).val else none)
-    (by {
-      simp only [Option.mem_def, Option.dite_none_right_eq_some, Option.some.injEq,
-        forall_exists_index, forall_apply_eq_imp_iff]
-      intro _ _ _ _ heq; symm; exact Subtype.ext_iff.mp (e.injective (Subtype.ext heq))
-    })
+end Lpofin
 
-lemma lin_rec_iso {m : Type → Type} {α act test : Type}
+namespace Finset
+
+open Classical in
+noncomputable def equiv_image {X Y : Set Node} (e : X ≃ Y) (s : Finset Node)
+    (hs : ↑s ⊆ X) : Finset Node :=
+  s.attach.map {
+    toFun (x : ↑s) := (e ⟨x.val, hs x.property⟩).val
+    inj' _ _ h := by
+      ext; have := Subtype.val_injective h |> e.injective |> Subtype.val_inj.mpr; exact this
+  }
+
+lemma mem_equiv_image_iff {X Y : Set Node} {e : X ≃ Y} {s : Finset Node}
+    {hs : ↑s ⊆ X} {y : Node} :
+    y ∈ s.equiv_image e hs ↔ ∃ hy : y ∈ Y, (e.symm ⟨y, hy⟩).val ∈ s := by
+  refine Iff.trans mem_map ?_; constructor
+  · rintro ⟨x, _, rfl⟩; refine ⟨Subtype.coe_prop _, ?_⟩
+    conv => rhs; arg 1; exact e.symm_apply_apply _
+    exact x.property
+  · intro ⟨hy, hy'⟩; refine ⟨⟨_, hy'⟩, mem_attach _ _, ?_⟩
+    have := e.apply_symm_apply ⟨_, hy⟩ |> Subtype.ext_iff.mp; exact this
+
+lemma mem_equiv_image {X Y : Set Node} {e : X ≃ Y} {s : Finset Node}
+    {hs : ↑s ⊆ X} {x : Node} (hx : x ∈ s) :
+    (e ⟨x, hs hx⟩).val ∈ equiv_image e s hs := by
+  refine mem_equiv_image_iff.mpr ⟨Subtype.coe_prop _, ?_⟩
+  conv => rhs; arg 1; exact e.symm_apply_apply _
+  exact hx
+
+lemma equiv_image_erase {X Y : Set Node} {e : X ≃ Y} {s : Finset Node}
+    {hs : ↑s ⊆ X} {x : Node} (hx : x ∈ s) :
+    (s.equiv_image e hs).erase (e ⟨x, hs hx⟩).val =
+    (s.erase x).equiv_image e
+      (fun _ h ↦ Finset.erase_subset _ _ h |> hs) := by
+  ext y; rw [mem_erase, mem_equiv_image_iff, mem_equiv_image_iff]
+  constructor
+  · intro ⟨hne, hy, hys⟩; refine ⟨hy, mem_erase.mpr ⟨?_, hys⟩⟩
+    rintro rfl; apply hne; conv => rhs; arg 1; exact e.apply_symm_apply _
+  · intro ⟨hy, he⟩; have ⟨hne, hys⟩ := mem_erase.mp he
+    refine ⟨?_, hy, hys⟩
+    rintro rfl; apply hne; conv => lhs; arg 1; exact e.symm_apply_apply _
+
+end Finset
+
+namespace Lpofin
+
+open Linearization
+
+open Classical in
+def next_equiv {l : Type} [Bot l] {a : Lpofin l} {Y : Set Node} {e : a.nodes ≃ Y} {s : Finset Node}
+    {hs : ↑s ⊆ a.nodes} :
+    next a s ≃ next (a.permute e) (s.equiv_image e hs) := {
+  toFun x := by
+    refine ⟨e ⟨x.val, ?_⟩, ?_⟩ <;>
+      have ⟨hxa, hxs, h⟩ := Finset.mem_filter.mp x.property
+    · exact a.property.mem_toFinset.mp hxa
+    · refine Finset.mem_filter.mpr ⟨?_, ?_, ?_⟩
+      · refine (Set.Finite.mem_toFinset _).mpr ?_; exact Subtype.coe_prop _
+      · exact Finset.mem_equiv_image hxs
+      · intro y ⟨hy, _, hrel⟩ hc
+        have ⟨_, hys⟩ := Finset.mem_equiv_image_iff.mp hc
+        conv at hrel => arg 3; arg 1; exact e.symm_apply_apply _
+        exact h _ hrel hys
+  invFun y := by
+    refine ⟨e.symm ⟨y.val, ?_⟩, ?_⟩ <;>
+      have ⟨hya, hys, h⟩ := Finset.mem_filter.mp y.property
+    · exact (Set.Finite.mem_toFinset _).mp hya
+    · have ⟨hy, hy'⟩ := s.mem_equiv_image_iff.mp hys
+      refine Finset.mem_filter.mpr ⟨?_, hy', ?_⟩
+      · exact (Set.Finite.mem_toFinset _).mpr <| Subtype.coe_prop _
+      · intro z hrel hc; refine h (e ⟨z, hs hc⟩) ⟨?_, hy, ?_⟩ ?_
+        · exact Subtype.coe_prop _
+        · conv => arg 2; arg 1; exact e.symm_apply_apply _
+          exact hrel
+        · exact s.mem_equiv_image hc
+  left_inv x := by simp only [Subtype.coe_eta, Equiv.symm_apply_apply]
+  right_inv x := by simp only [Subtype.coe_eta, Equiv.apply_symm_apply]
+}
+
+open Classical in
+lemma filter_by_outcome_equiv_image {l : Type} [Bot l]
+    {α : Lpofin l} {Y : Set Node} {s : Finset Node} {x : Node} {b : Bool} {e : α.nodes ≃ Y}
+    {hs : ↑s ⊆ α.nodes} (hx : x ∈ s) :
+    filter_by_outcome (α.permute e) (s.equiv_image e hs) (e ⟨x, hs hx⟩).val b =
+    (filter_by_outcome α s x b).equiv_image e
+      (fun _ h ↦ filter_by_outcome_sub_erase h |> Finset.erase_subset _ _ |> hs) := by
+  ext y
+  simp only [filter_by_outcome, Finset.mem_equiv_image_iff, Finset.mem_erase, Finset.mem_filter]
+  constructor
+  · intro ⟨⟨hne, hy, hys⟩, v, ⟨_,  hf⟩, hb⟩
+    refine ⟨hy, ⟨?_, hys⟩, ?_⟩
+    · rintro rfl; apply hne; conv => rhs; arg 1; exact e.apply_symm_apply _
+    · refine ⟨_, hf, ?_⟩; match b with
+      | true =>
+        simp_all only [cond_true]; refine ⟨_, ?_, hb⟩
+        conv => lhs; arg 1; exact e.symm_apply_apply _
+      | false =>
+        simp_all only [cond_false]; rintro ⟨z, rfl, hc⟩; apply hb
+        conv => arg 1; arg 1; exact e.apply_symm_apply _
+        exact hc
+  · intro ⟨hy, ⟨hne, hys⟩, v, hf, hb⟩
+    refine ⟨⟨?_, hy, hys⟩, ?_⟩
+    · rintro rfl; apply hne; conv => lhs; arg 1; exact e.symm_apply_apply _
+    · have := (Lpo.permute_form_sat_iff (e := e) (Subtype.coe_prop _)).mp hf
+      conv at this => arg 2; arg 1; exact e.apply_symm_apply _
+      refine ⟨_, this, ?_⟩; match b with
+      | true =>
+        simp_all only [cond_true]; exact ⟨_, rfl, hb⟩
+      | false =>
+        simp_all only [cond_false]; intro ⟨z, heq, hv⟩; apply hb
+        obtain rfl := Subtype.val_injective heq |> e.injective; exact hv
+
+lemma lin_node_isomorphic {m : Type → Type} {α act test : Type}
     [Linearizable m α] [Bot (m α)]
     [Sem act α (m α)] [Sem test α (m Bool)]
     {X : Set Node}
-    {a : Lpofin (Label act test)} {e : a.nodes ≃ X} {s : Finset Node} :
-    (lin_rec a s : α → m α) =
-    lin_rec (a.permute e) (finset_equiv_image e s) := by
-  induction s using Finset.strongInduction with
-  | H s hind =>
-    ext st; unfold lin_rec; by_cases h : s = ∅
-    · subst h; simp only [↓reduceIte, finset_equiv_image, Finset.filterMap_empty]
-    · sorry
+    {a : Lpofin (Label act test)} {e : a.nodes ≃ X} {s : Finset Node}
+    (hs : ↑s ⊆ a.nodes) {x : Node} (hx : x ∈ s)
+    (ih : ∀ {t} (ht : t ⊂ s),
+      (a.lin_rec t : α → m α) =
+      (a.permute e).lin_rec (Finset.equiv_image e t
+        (fun _ h ↦ ht.subset h |> hs))) :
+    (lin_node a s x hx : α → m α) =
+    lin_node (a.permute e) (s.equiv_image e hs)
+      (e ⟨x, hs hx⟩).val
+      (s.mem_equiv_image hx) := by
+  ext σ; simp only [lin_node]
+  have : (a.permute e).lab (e ⟨x, hs hx⟩).val = a.lab x := by
+    refine (dif_pos (Subtype.coe_prop _)).trans ?_
+    conv => lhs; arg 2; arg 1; exact e.symm_apply_apply _
+    rfl
+  rw [this]
+  match a.lab x with
+  | Label.bot => rfl
+  | Label.fork =>
+    simp only; rw [Finset.equiv_image_erase hx]
+    refine congrFun (ih ?_) _; exact Finset.erase_ssubset hx
+  | Label.act aa =>
+    simp only; refine congrArg₂ _ rfl ?_; rw [Finset.equiv_image_erase hx]
+    refine ih ?_; exact Finset.erase_ssubset hx
+  | Label.test bb =>
+    simp only; refine congrArg₂ _ rfl ?_; ext r
+    rw [filter_by_outcome_equiv_image hx]; refine congrFun (ih ?_) _
+    exact ssubset_of_subset_of_ssubset filter_by_outcome_sub_erase (Finset.erase_ssubset hx)
 
-lemma lin_iso {m : Type → Type} {α act test : Type}
+lemma lin_rec_isomorphic {m : Type → Type} {α act test : Type}
+    [Linearizable m α] [Bot (m α)]
+    [Sem act α (m α)] [Sem test α (m Bool)]
+    {X : Set Node}
+    {a : Lpofin (Label act test)} {e : a.nodes ≃ X} {s : Finset Node}
+    (hs : ↑s ⊆ a.nodes) :
+    (lin_rec a s : α → m α) =
+    lin_rec (a.permute e) (s.equiv_image e hs) := by
+  induction s using Finset.strongInduction with
+  | H s ih =>
+    ext σ; unfold lin_rec; refine if_congr ?_ rfl ?_
+    · constructor
+      · rintro rfl; ext x; simp only [Finset.notMem_empty, iff_false]; intro hc
+        have ⟨_, h⟩ := Finset.mem_equiv_image_iff.mp hc; contradiction
+      · intro h; ext x; simp only [Finset.notMem_empty, iff_false]; intro hc
+        refine Finset.notMem_empty (e ⟨x, hs hc⟩).val ?_; rw [← h]; exact s.mem_equiv_image hc
+    · refine Nondet.nondet_congr next_equiv ?_
+      ext ⟨x, hx⟩; refine congrFun (lin_node_isomorphic hs _ ?_) _
+      intro t ht; apply ih t ht
+
+lemma lin_isomorphic {m : Type → Type} {α act test : Type}
     [Linearizable m α] [Bot (m α)]
     [Sem act α (m α)] [Sem test α (m Bool)]
     {a b : Lpofin (Label act test)} (h : a ≈ b) :
     (lin a : α →  m α) = lin b := by
-  unfold lin; rcases h with ⟨e, h⟩
-  refine Eq.trans lin_rec_iso (congr_arg₂ _ (Subtype.ext h) ?_)
-  have hn := congr_arg Lpo.nodes h; simp [Lpo.permute, Lpo.nodes] at hn
-  sorry
-  -- have _ : Fintype ↑(e '' a.val.val.nodes) := by
-  --   unfold Lpo.nodes; rw [hn]; exact b.property.fintype
-  -- have _ : Fintype ↑(b.val.val.nodes) := b.property.fintype
-  -- refine (@Set.Finite.toFinset_image _ _ _ ?_ _ _ ?_).symm.trans ?_
-  -- · unfold Lpo.nodes; rw [hn]; exact b.property
-  -- · unfold Lpofin.nodes_finset; unfold Set.Finite.toFinset
-  --   refine @Set.toFinset_congr _ _ _ ?_ ?_ hn
+  unfold lin; have ⟨e, h⟩ := h
+  refine Eq.trans (lin_rec_isomorphic ?_) (congr_arg₂ _ (Subtype.ext h) ?_)
+  · conv => lhs; exact a.property.coe_toFinset
+    exact subset_refl _
+  · ext x; rw [Finset.mem_equiv_image_iff]; constructor
+    · intro ⟨hx, _⟩; exact b.property.mem_toFinset.mpr hx
+    · intro hx; refine ⟨b.property.mem_toFinset.mp hx, ?_⟩
+      exact a.property.mem_toFinset.mpr <| Subtype.coe_prop _
 
 end Lpofin
-
-end Linearization
