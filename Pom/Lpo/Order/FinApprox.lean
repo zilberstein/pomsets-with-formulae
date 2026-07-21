@@ -24,6 +24,10 @@ def rel {l : Type} [Bot l] (a : Lpofin l) := a.val.rel
 def lab {l : Type} [Bot l] (a : Lpofin l) := a.val.lab
 def form {l : Type} [Bot l] (a : Lpofin l) := a.val.form
 
+lemma le_nodes {l : Type} [LE l] [Bot l] {a b : Lpofin l} (h : a ≤ b) :
+    a.nodes_finset ⊆ b.nodes_finset :=
+  fun _ hx ↦ a.property.mem_toFinset.mp hx |> h.nodes |> b.property.mem_toFinset.mpr
+
 def IsIsomorphic {l : Type} [Bot l] (a b : Lpofin l) : Prop :=
   a.val.IsIsomorphic b.val
 
