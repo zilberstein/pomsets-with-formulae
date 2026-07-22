@@ -62,6 +62,24 @@ lemma guard_monotone {l : Type} [PartialOrder l] [OrderBot l] {ℓ ℓ' : l} (h�
   · refine mem_guard hℓ hα hβ
   · exact Lpo.guard_monotone hle hle₁ hle₂
 
+lemma guard_trunc {l : Type} [Preorder l] [OrderBot l]
+    {ℓ : l} {h : ℓ ≠ ⊥} {p q : Pom l} (n : ℕ) :
+    (guard h p q).trunc (n + 1) = guard h (p.trunc n) (q.trunc n) := by
+  obtain ⟨α, β, x, hx, hx', hd, rfl, rfl, hmem⟩ := exists_rep_guard h p q
+  obtain ⟨α', β', y, hy, hy', hd', heq₁, heq₂, hmem'⟩ :=
+    exists_rep_guard h ((Pom.mk α).trunc n) ((Pom.mk β).trunc n)
+  rw [hmem, hmem']; unfold trunc Pomfin.to_pom at *
+  conv => lhs; arg 3; exact Quotient.lift_mk _ _ _
+  conv => lhs; exact Quotient.map_mk _ _ _
+  conv => lhs; arg 2; exact Lpo.par_trunc n
+  refine Quotient.eq_iff_equiv.mpr (Lpo.guard_isomorphic ?_ ?_)
+  · conv at heq₁ => lhs; arg 3; exact Quotient.lift_mk _ _ _
+    conv at heq₁ => lhs; exact Quotient.map_mk _ _ _
+    exact Quotient.eq_iff_equiv.mp heq₁
+  · conv at heq₂ => lhs; arg 3; exact Quotient.lift_mk _ _ _
+    conv at heq₂ => lhs; exact Quotient.map_mk _ _ _
+    exact Quotient.eq_iff_equiv.mp heq₂
+
 open OmegaCompletePartialOrder
 
 lemma guard_continuous {l : Type} [DCPO l] [OrderBot l] [ScottCompact l]
@@ -74,17 +92,6 @@ lemma guard_continuous {l : Type} [DCPO l] [OrderBot l] [ScottCompact l]
   intro p q n; cases n with
   | zero => exact le_of_eq_of_le (trunc_0 _) bot_le
   | succ n =>
-    obtain ⟨α, β, x, hx, hx', hd, rfl, rfl, hmem⟩ := exists_rep_guard h p q
-    rw [hmem]
-    unfold trunc Pomfin.to_pom
-    conv => lhs; arg 3; exact Quotient.lift_mk _ _ _
-    conv => lhs; exact Quotient.map_mk _ _ _
-    refine le_of_eq_of_le ?_ (le_ωSup _ n)
-    conv => lhs; arg 2; exact Lpo.par_trunc n
-    simp only [DFunLike.coe]
-    symm; refine mem_guard h ?_ ?_ <;> {
-      conv => lhs; arg 3; unfold trunc; exact Quotient.lift_mk _ _ _
-      exact Quotient.map_mk _ _ _
-    }
+    rw [guard_trunc]; refine le_of_eq_of_le ?_ (le_ωSup _ n); rfl
 
 end Pom

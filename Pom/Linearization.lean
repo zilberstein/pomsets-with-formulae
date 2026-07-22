@@ -39,4 +39,12 @@ lemma lin_continuous {t : Type → Type} {α act test : Type}
     ωScottContinuous (Pom.lin : Pom (Label act test) → α → t α) :=
   ext_continuous (Pomfin.lin_monotone t α act test)
 
+lemma lin_eq_fin {t : Type → Type} {α act test : Type}
+    [Linearizable t α]
+    [∀ {β : Type}, OmegaCompletePartialOrder (t β)] [∀ {β : Type}, OrderBot (t β)]
+    [DCPO act] [Sem act α (t α)]
+    [DCPO test] [Sem test α (t Bool)]
+    (p : Pomfin (Label act test)) :
+    lin p.to_pom = Pomfin.lin t α act test p := ext_eq_fin _ p
+
 end Pom

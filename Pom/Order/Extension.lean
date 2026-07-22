@@ -95,4 +95,21 @@ lemma continuous_of_trunc_le_ext₂ {f : Pom l → Pom l → Pom l}
   refine heq.trans <| ext₂_continuous.trans (congrArg ωSup ?_)
   ext n; exact heq.symm
 
+omit [ScottCompact l] in
+lemma ext_eq_fin {X : Type} [OmegaCompletePartialOrder X] {f : Pomfin l → X}
+    (hf : Monotone f)
+    (p : Pomfin l) :
+    ext f hf p.to_pom = f p := by
+  refine le_antisymm ?_ ?_
+  · refine ωSup_le _ _ ?_; intro i; exact hf <| Pom.trunc_le _ _
+  · obtain ⟨α, rfl⟩ := p.exists_rep
+    have ⟨n, h⟩ := Lpo.lpofin_level_bounded α
+    refine le_of_eq_of_le ?_ (le_ωSup _ (n+1))
+    refine congrArg f ?_
+    unfold Pomfin.to_pom trunc
+    conv => rhs; arg 3; exact Quotient.map_mk _ _ _
+    conv => rhs; exact Quotient.lift_mk _ _ _
+    symm; refine congrArg _ (Lpo.trunc_of_bounded ?_ |> Subtype.ext)
+    intro x hx; exact lt_of_le_of_lt (h x hx) ENat.natCast_lt_succ
+
 end Pom
