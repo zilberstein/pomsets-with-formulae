@@ -1,4 +1,4 @@
-import Pom.Order.FinApprox
+import Pom.Order.OmegaCompletePartialOrder
 
 namespace Pom
 
