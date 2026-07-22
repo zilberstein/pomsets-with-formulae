@@ -1,3 +1,5 @@
+import DomainTheory.OmegaCompletePartialOrder.Instances
+
 import Pom.Linearization
 import Pom.Operations.Guard
 
@@ -34,51 +36,6 @@ lemma guard_trunc {l : Type} [Preorder l] [OrderBot l] {x : Node} {ℓ : l} {α 
       hroot := Subtype.ext <| Lpo.par_trunc n
 
 end Lpofin
-
-section DomainTheory
-
--- A few lemmas to add to the domain theory library
-
-namespace OmegaCompletePartialOrder
-namespace Chain
-
-def shift {X : Type} [Preorder X] (c : Chain X) : Chain X := {
-  toFun n := c (n + 1)
-  monotone' _ _ hle := c.monotone' <| add_le_add hle (le_refl _)
-}
-
-lemma ωSup_shift {X : Type} [OmegaCompletePartialOrder X] (c : Chain X) :
-    ωSup c = ωSup c.shift := by
-  refine le_antisymm ?_ ?_
-  · refine ωSup_le _ _ ?_; intro i
-    refine le_trans ?_ (le_ωSup _ i)
-    exact c.monotone' <| Nat.le_succ _
-  · refine ωSup_le _ _ ?_; intro i
-    exact le_ωSup _ (i + 1)
-
-def const {X : Type} [Preorder X] (x : X) : Chain X := {
-  toFun _ := x
-  monotone' _ _ _ := le_refl _
-}
-
-lemma ωSup_const {X : Type} [OmegaCompletePartialOrder X] (x : X) :
-    ωSup (const x) = x := by
-  refine le_antisymm ?_ ?_
-  · refine ωSup_le _ _ ?_; intro n; exact le_refl _
-  · exact le_ωSup (const x) 0
-
-end Chain
-end OmegaCompletePartialOrder
-
-open OmegaCompletePartialOrder
-
-lemma ωSup_apply {X Y : Type} [OmegaCompletePartialOrder Y] (c : Chain (X → Y)) (x : X) :
-    ωSup c x = ωSup {
-      toFun n := c n x
-      monotone' _ _ hle := c.monotone' hle x
-    } := rfl
-
-end DomainTheory
 
 namespace Pom
 open OmegaCompletePartialOrder
