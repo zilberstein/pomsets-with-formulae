@@ -47,4 +47,18 @@ lemma lin_eq_fin {t : Type → Type} {α act test : Type}
     (p : Pomfin (Label act test)) :
     lin p.to_pom = Pomfin.lin t α act test p := ext_eq_fin _ p
 
+lemma lin_mk {t : Type → Type} {X act test : Type}
+    [Linearizable t X]
+    [∀ {β : Type}, OmegaCompletePartialOrder (t β)] [∀ {β : Type}, OrderBot (t β)]
+    [DCPO act] [Sem act X (t X)]
+    [DCPO test] [Sem test X (t Bool)]
+    (α : Lpo (Label act test)) :
+    ((Pom.mk α).lin : X → t X) = ωSup {
+      toFun n := (α.trunc n).lin
+      monotone' _ _ hle :=  Lpofin.lin_mono (Lpo.trunc_mono (le_refl α) hle)
+    } := by
+  refine congrArg ωSup ?_; ext1; ext1 n; simp only [DFunLike.coe]
+  rw [trunc_mk]; unfold Pomfin.lin
+  conv => lhs; exact Quotient.lift_mk _ _ _
+
 end Pom

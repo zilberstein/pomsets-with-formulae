@@ -47,6 +47,11 @@ lemma exists_rep_guard {ℓ : l} (h : ℓ ≠ ⊥) (p q : Pom l) :
   · exact Quotient.eq_iff_equiv.mpr i.hβ
   · rw [← heq]; exact Quotient.map₂_mk _ _ _ _
 
+lemma guard_mk {ℓ : l} {h : ℓ ≠ ⊥} {α β : Lpo l} {x : Node}
+    (hx : x ∉ α.nodes) (hx' : x ∉ β.nodes) (hd : Disjoint α.nodes β.nodes) :
+    guard h (Pom.mk α) (Pom.mk β) = Pom.mk (Lpo.guard hx hx' hd h) :=
+  mem_guard h rfl rfl
+
 lemma guard_monotone {l : Type} [PartialOrder l] [OrderBot l] {ℓ ℓ' : l} (hℓ : ℓ ≠ ⊥)
     {p p' q q' : Pom l} (hle : ℓ ≤ ℓ') (hle₁ : p ≤ p') (hle₂ : q ≤ q') :
     guard hℓ p q ≤ guard (ne_bot_of_le_ne_bot hℓ hle) p' q' := by
@@ -64,14 +69,15 @@ lemma guard_trunc {l : Type} [Preorder l] [OrderBot l]
     {ℓ : l} {h : ℓ ≠ ⊥} {p q : Pom l} (n : ℕ) :
     (guard h p q).trunc (n + 1) = guard h (p.trunc n) (q.trunc n) := by
   obtain ⟨α, β, x, hx, hx', hd, rfl, rfl, hmem⟩ := exists_rep_guard h p q
-  obtain ⟨α', β', y, hy, hy', hd', heq₁, heq₂, hmem'⟩ :=
-    exists_rep_guard h ((Pom.mk α).trunc n) ((Pom.mk β).trunc n)
-  rw [hmem, hmem']; conv => lhs; exact Pomfin.mk_to_pom _
-  simp only; conv => lhs; arg 1; exact Lpo.par_trunc n
-  conv at heq₁ => lhs; exact Pomfin.mk_to_pom _
-  conv at heq₂ => lhs; exact Pomfin.mk_to_pom _
-  refine Quotient.eq_iff_equiv.mpr (Lpo.guard_isomorphic ?_ ?_) <;>
-    apply Quotient.eq_iff_equiv.mp <;> assumption
+  rw [guard_mk hx hx' hd, trunc_mk, Pomfin.mk_to_pom]
+  rw [trunc_mk, trunc_mk, Pomfin.mk_to_pom, Pomfin.mk_to_pom]
+  rw [
+    guard_mk
+      (fun h ↦ hx <| (α.trunc_le n).nodes h)
+      (fun h ↦ hx' <| (β.trunc_le n).nodes h)
+      (hd.mono (α.trunc_le n).nodes (β.trunc_le n).nodes)
+  ]
+  exact congrArg Pom.mk (Lpo.par_trunc n)
 
 open OmegaCompletePartialOrder
 
