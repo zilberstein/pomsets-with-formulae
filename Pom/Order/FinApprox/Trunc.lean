@@ -3,9 +3,9 @@ import Pom.Order.FinApprox
 namespace Pom
 
 noncomputable def trunc {l : Type} [Preorder l] [OrderBot l] (p : Pom l) (n : ℕ) : Pomfin l :=
-  p.lift
-    (fun (a : Lpo l) ↦ Quotient.mk (@Lpofin.instSetoid l _) (a.trunc n))
-    (fun _ _ h ↦ Quotient.eq_iff_equiv.2 (Lpo.trunc_equiv h))
+  p.map
+    (fun (a : Lpo l) ↦ a.trunc n)
+    (fun _ _ ↦ Lpo.trunc_equiv)
 
 lemma trunc_mono {l : Type} [PartialOrder l] [OrderBot l] {p q : Pom l} {n m : ℕ}
     (hp : p ≤ q) (hn : n ≤ m) : p.trunc n ≤ q.trunc m := by
@@ -17,14 +17,20 @@ lemma trunc_le {l : Type} [PartialOrder l] [OrderBot l] (p : Pom l) (n : ℕ) :
   obtain ⟨α, rfl⟩ := p.exists_rep
   refine ⟨α.trunc n, rfl, α, rfl, Lpo.trunc_le _ _⟩
 
-lemma lpo_trunc_mem {l : Type} [Preorder l] [OrderBot l] {α : Lpo l} {p : Pom l} {n : ℕ}
+lemma mem_trunc {l : Type} [Preorder l] [OrderBot l] {α : Lpo l} {p : Pom l} {n : ℕ}
     (h : α ∈ p) : α.trunc n ∈ p.trunc n := by
   rw [h]; rfl
 
+lemma exists_rep_trunc {l : Type} [Preorder l] [OrderBot l] (p : Pom l) (n : ℕ) :
+    ∃ α : Lpo l, α.trunc n ∈ p.trunc n := by
+  obtain ⟨α, rfl⟩ := p.exists_rep
+  exact ⟨α, Quotient.map_mk _ _ _⟩
+
+lemma trunc_mk {l : Type} [Preorder l] [OrderBot l] (α : Lpo l) (n : ℕ) :
+    (Pom.mk α).trunc n = Pomfin.mk (α.trunc n) := Quotient.map_mk _ _ _
+
 lemma trunc_0 {l : Type} [Preorder l] [OrderBot l] (p : Pom l) : (p.trunc 0).to_pom = ⊥ := by
-  unfold Pomfin.to_pom trunc; obtain ⟨α, rfl⟩ := p.exists_rep
-  conv => lhs; arg 3; exact Quotient.lift_mk _ _ _
-  conv => lhs; exact Quotient.map_mk _ _ _
+  obtain ⟨α, heq⟩ := p.exists_rep_trunc 0; rw [heq, Pomfin.mk_to_pom]
   refine Quotient.eq_iff_equiv.mpr ?_
   have ⟨x, hx, hroot⟩ := α.property.rel.single_rooted
   have hlev := lev_root hx hroot

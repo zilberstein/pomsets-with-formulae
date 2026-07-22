@@ -18,14 +18,14 @@ lemma upper_bound_of_compact_pom (c : Chain (Pom l)) (n : ℕ) :
   have ⟨c', hc⟩ := exists_lpo_chain_of_pom_chain c
   have ⟨i, hle⟩ := upper_bound_of_compact c' n
   refine ⟨i, (ωSup c').trunc n, ?_, (c' i).trunc n, ?_, ?_⟩
-  · refine Pomfin.val_mem_to_pom.mp (lpo_trunc_mem ?_)
+  · refine Pomfin.val_mem_to_pom.mp (mem_trunc ?_)
     have ⟨hle, hge⟩ := lpo_chain_pom_chain_lub hc
     simp only [upperBounds, Set.mem_range, forall_exists_index, forall_apply_eq_imp_iff,
       Set.mem_setOf_eq, lowerBounds] at hle hge
     refine le_antisymm ?_ ?_
     · exact ωSup_le _ _ hle
     · exact hge (le_ωSup _)
-  · exact Pomfin.val_mem_to_pom.mp (lpo_trunc_mem (hc i))
+  · exact Pomfin.val_mem_to_pom.mp (mem_trunc (hc i))
   · exact Lpo.trunc_le_trunc hle
 
 theorem ext_continuous {X : Type} [OmegaCompletePartialOrder X] {f : Pomfin l → X}
@@ -106,9 +106,8 @@ lemma ext_eq_fin {X : Type} [OmegaCompletePartialOrder X] {f : Pomfin l → X}
     have ⟨n, h⟩ := Lpo.lpofin_level_bounded α
     refine le_of_eq_of_le ?_ (le_ωSup _ (n+1))
     refine congrArg f ?_
-    unfold Pomfin.to_pom trunc
-    conv => rhs; arg 3; exact Quotient.map_mk _ _ _
-    conv => rhs; exact Quotient.lift_mk _ _ _
+    conv => rhs; arg 1; exact Pomfin.mk_to_pom α
+    rw [trunc_mk]
     symm; refine congrArg _ (Lpo.trunc_of_bounded ?_ |> Subtype.ext)
     intro x hx; exact lt_of_le_of_lt (h x hx) ENat.natCast_lt_succ
 

@@ -1,8 +1,6 @@
 import Pom.Lpo.Operations.Guard
 import Pom.Lpo.Operations.Par.FinApprox
 import Pom.Operations.Par
-import Pom.Order.Extension
-import Pom.Order.FinApprox
 
 namespace Pom
 
@@ -68,17 +66,12 @@ lemma guard_trunc {l : Type} [Preorder l] [OrderBot l]
   obtain ⟨α, β, x, hx, hx', hd, rfl, rfl, hmem⟩ := exists_rep_guard h p q
   obtain ⟨α', β', y, hy, hy', hd', heq₁, heq₂, hmem'⟩ :=
     exists_rep_guard h ((Pom.mk α).trunc n) ((Pom.mk β).trunc n)
-  rw [hmem, hmem']; unfold trunc Pomfin.to_pom at *
-  conv => lhs; arg 3; exact Quotient.lift_mk _ _ _
-  conv => lhs; exact Quotient.map_mk _ _ _
-  conv => lhs; arg 2; exact Lpo.par_trunc n
-  refine Quotient.eq_iff_equiv.mpr (Lpo.guard_isomorphic ?_ ?_)
-  · conv at heq₁ => lhs; arg 3; exact Quotient.lift_mk _ _ _
-    conv at heq₁ => lhs; exact Quotient.map_mk _ _ _
-    exact Quotient.eq_iff_equiv.mp heq₁
-  · conv at heq₂ => lhs; arg 3; exact Quotient.lift_mk _ _ _
-    conv at heq₂ => lhs; exact Quotient.map_mk _ _ _
-    exact Quotient.eq_iff_equiv.mp heq₂
+  rw [hmem, hmem']; conv => lhs; exact Pomfin.mk_to_pom _
+  simp only; conv => lhs; arg 1; exact Lpo.par_trunc n
+  conv at heq₁ => lhs; exact Pomfin.mk_to_pom _
+  conv at heq₂ => lhs; exact Pomfin.mk_to_pom _
+  refine Quotient.eq_iff_equiv.mpr (Lpo.guard_isomorphic ?_ ?_) <;>
+    apply Quotient.eq_iff_equiv.mp <;> assumption
 
 open OmegaCompletePartialOrder
 

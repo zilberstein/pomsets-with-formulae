@@ -111,16 +111,10 @@ lemma par_continuous {l : Type} [DCPO l] [OrderBot l] [ScottCompact l]
   | zero => exact le_of_eq_of_le (trunc_0 _) bot_le
   | succ n =>
     obtain ⟨α, β, x, hx, hx', hd, rfl, rfl, hmem⟩ := exists_rep_par h p q
-    rw [hmem]
-    unfold trunc Pomfin.to_pom
-    conv => lhs; arg 3; exact Quotient.lift_mk _ _ _
-    conv => lhs; exact Quotient.map_mk _ _ _
+    rw [hmem, trunc_mk, Pomfin.mk_to_pom]
     refine le_of_eq_of_le ?_ (le_ωSup _ n)
-    conv => lhs; arg 2; exact Lpo.par_trunc n
+    conv => lhs; arg 1; exact Lpo.par_trunc n
     simp only [DFunLike.coe]
-    symm; refine mem_par h ?_ ?_ <;> {
-      conv => lhs; arg 3; unfold trunc; exact Quotient.lift_mk _ _ _
-      exact Quotient.map_mk _ _ _
-    }
+    symm; refine mem_par h ?_ ?_ <;> exact Pomfin.val_mem_to_pom.mp (mem_trunc rfl)
 
 end Pom

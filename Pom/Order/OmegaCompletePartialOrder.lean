@@ -175,15 +175,14 @@ lemma upper_bound_of_compact (c : Chain (Lpo l)) (n : ℕ) :
 lemma lpo_chain_pom_chain_lub
     {cl : Chain (Lpo l)} {cp : Chain (Pom l)}
     (h : ∀ i, cl i ∈ cp i) :
-    IsLUB (Set.range cp) (Quotient.mk' (ωSup cl)) := by
+    IsLUB (Set.range cp) (Pom.mk (ωSup cl)) := by
   constructor
   · intro p hp; obtain ⟨i, rfl⟩ := Set.mem_range.mpr hp
     exact ⟨cl i, h i, ωSup cl, rfl, le_ωSup _ _⟩
   · simp only [lowerBounds, upperBounds, Set.mem_range, forall_exists_index,
       forall_apply_eq_imp_iff, Set.mem_setOf_eq]; intro p hp
     refine pom_ge_iff_ge_fin ?_; intro n
-    simp only [Pom.trunc]
-    conv => lhs; rhs; exact Quotient.lift_mk _ _ _
+    rw [Pom.trunc_mk, Pomfin.mk_to_pom]
     obtain ⟨i, hi⟩ :=  upper_bound_of_compact cl n
     refine le_trans ⟨(ωSup cl).trunc n, ?_, cl i, h i, hi⟩ (hp i)
     refine Quotient.eq_iff_equiv.mpr ?_; rfl

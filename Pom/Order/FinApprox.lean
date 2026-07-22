@@ -42,6 +42,9 @@ instance {l : Type} [PartialOrder l] [OrderBot l] : PartialOrder (Pomfin l) wher
   le_antisymm _ _ hpq hqp :=
     to_pom_injective (@le_antisymm (Pom l) _ _ _ hpq hqp)
 
+lemma mk_to_pom {l : Type} [Bot l] (α : Lpofin l) :
+    (Pomfin.mk α).to_pom = Pom.mk α.val := Quotient.map_mk _ _ _
+
 lemma to_pom_mono {l : Type} [PartialOrder l] [OrderBot l] :
     Monotone (@Pomfin.to_pom l _) := fun _ _ hle ↦ hle
 
