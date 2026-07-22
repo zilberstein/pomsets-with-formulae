@@ -12,6 +12,8 @@ class Nondet (α : Type) where
   nondet_congr {ι κ : Type} [Finite ι] [Finite κ]
     {f : ι → α} {g : κ → α} (e : ι ≃ κ) (h : f = g ∘ e) :
     nondet f = nondet g
+  nondet_singleton {ι : Type} [Unique ι] {f : ι → α} :
+    nondet f = f default
 
 lemma nondet_convert {α ι : Type} {X Y : Finset ι} [Nondet α]
     {f : ↑X → α} (h : X = Y) :
