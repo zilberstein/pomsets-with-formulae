@@ -41,6 +41,19 @@ noncomputable def seq {l : Type} [PartialOrder l] [OrderBot l] (p q : Pomfin l) 
     (fun _ _ h _ _ h' ↦ Lpofin.seq_isomorphic h h')
     p q
 
+lemma mem_seq {l : Type} [PartialOrder l] [OrderBot l]
+    (α β : Lpofin l) (f : Lpofin.CopyFn α β) :
+    Lpofin.seq α β f ∈ seq (mk α) (mk β) := by
+  conv => lhs; exact Quotient.map₂_mk _ _ _ _
+  refine Quotient.eq_iff_equiv.mpr (Lpofin.seq_isomorphic ?_ ?_) <;> rfl
+
+lemma exists_rep_seq {l : Type} [PartialOrder l] [OrderBot l] (p q : Pomfin l) :
+    ∃ α β f, α ∈ p ∧ β ∈ q ∧ Lpofin.seq α β f ∈ seq p q := by
+  obtain ⟨α, rfl⟩ := p.exists_rep
+  obtain ⟨β, rfl⟩ := q.exists_rep
+  have ⟨f⟩ := exists_copy_fn α β
+  exact ⟨α, β, f, rfl, rfl, mem_seq _ _ _⟩
+
 lemma seq_monotone {l : Type} [PartialOrder l] [OrderBot l] {p p' q q' : Pomfin l}
     (hle : p ≤ p') (hle' : q ≤ q') : seq p q ≤ seq p' q' := by
   obtain ⟨α, rfl, α', rfl, hle₁⟩ := Pomfin.le_iff.mp hle

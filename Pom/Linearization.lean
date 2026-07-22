@@ -19,6 +19,13 @@ lemma lin_monotone (t : Type → Type) (α act test : Type)
     Monotone (lin t α act test) :=
   Pomfin.lift_monotone Lpofin.lin_mono
 
+lemma lin_mk {t : Type → Type} {X act test : Type}
+    [Linearizable t X] [Bot (t X)]
+    [Sem act X (t X)] [Sem test X (t Bool)]
+    (α : Lpofin (Label act test)) :
+    lin t X act test (mk α) = Lpofin.lin α := by
+  unfold lin; exact Quotient.lift_mk _ _ _
+
 end Pomfin
 
 namespace Pom
