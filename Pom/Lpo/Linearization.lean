@@ -15,10 +15,25 @@ class Nondet (α : Type) where
   nondet_singleton {ι : Type} [Unique ι] {f : ι → α} :
     nondet f = f default
 
-lemma nondet_convert {α ι : Type} {X Y : Finset ι} [Nondet α]
+namespace Nondet
+
+lemma convert {α ι : Type} {X Y : Finset ι} [Nondet α]
     {f : ↑X → α} (h : X = Y) :
-    Nondet.nondet f = Nondet.nondet fun x : ↑Y ↦ f ⟨x.val, by subst h; exact x.property⟩ := by
+    Nondet.nondet f = Nondet.nondet fun x : ↑Y ↦ f ⟨x.val, h ▸ x.property⟩:= by
   subst h; rfl
+
+lemma finset_congr {α ι : Type} {X Y : Finset ι} [Nondet α]
+    {f : ↑X → α} {g : ↑Y → α}
+    (h : X = Y) (h' : f = g ∘ fun x ↦ ⟨x.val, h ▸ x.property⟩) :
+    nondet f = nondet g := by
+  subst h'; symm; exact convert h.symm
+
+lemma finset_singleton {α ι : Type} {X : Finset ι} [Nondet α] (x : ι)
+    {f : ↑X → α} (h : X = {x}) :
+    Nondet.nondet f = f ⟨x, h ▸ Finset.mem_singleton_self _⟩ := by
+  subst h; exact nondet_singleton
+
+end Nondet
 
 open OmegaCompletePartialOrder
 
@@ -236,7 +251,7 @@ theorem lin_rec_mono {m : Type → Type} {α act test : Type}
         · exact Finset.ne_empty_of_mem <| Finset.mem_inter.mpr ⟨hx, a.property.mem_toFinset.mpr hxa⟩
         · exact Finset.ne_empty_of_mem <| Finset.mem_inter.mpr ⟨hz, a.property.mem_toFinset.mpr hza⟩
       conv => lhs; exact if_neg ht_emp
-      conv => rhs; exact (if_neg h).trans <| nondet_convert heq.symm
+      conv => rhs; exact (if_neg h).trans <| Nondet.convert heq.symm
       refine Linearizable.nondet_mono ?_; intro ⟨x, hx⟩; simp only
       apply lin_node_mono hbot hle _ hx
       intro t ht; apply ih

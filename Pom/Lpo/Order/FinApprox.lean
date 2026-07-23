@@ -53,6 +53,9 @@ noncomputable def permute {l : Type} [Bot l] (a : Lpofin l) {X : Set Node}
     exact a.property
   }⟩
 
+def singleton {l : Type} [Bot l] (x : Node) (ℓ : l) : Lpofin l :=
+  ⟨Lpo.singleton x ℓ, Set.finite_singleton _⟩
+
 end Lpofin
 
 namespace Lpo

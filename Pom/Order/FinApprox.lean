@@ -78,4 +78,11 @@ lemma lift_monotone {l X : Type} [PartialOrder l] [OrderBot l] [Preorder X]
   refine le_of_le_of_eq ?_ (Quotient.lift_mk _ _ _).symm
   exact hmono hle'
 
+def singleton {l : Type} [Bot l] (ℓ : l) : Pomfin l :=
+  Pomfin.mk (Lpofin.singleton default ℓ)
+
+lemma singleton_eq {l : Type} [Bot l] (ℓ : l) :
+    Pom.singleton ℓ = (Pomfin.singleton ℓ).to_pom := by
+  symm; exact mk_to_pom _
+
 end Pomfin

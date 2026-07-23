@@ -179,14 +179,6 @@ lemma guard_left_filter {act test : Type}
         · exact hxy heq.symm
         · exact hb hv
 
--- This doesn't exist in mathlib?
-def Equiv.finsetCongr {α : Type} {s t : Finset α} (h : s = t) : s ≃ t := {
-  toFun x := ⟨x.val, h ▸ x.property⟩
-  invFun y := ⟨y.val, h.symm ▸ y.property⟩
-  left_inv _ := rfl
-  right_inv _ := rfl
-}
-
 lemma lin_rec_guard_left_aux {t : Type → Type} {s act test : Type}
     [Linearizable t s] [∀ {β : Type}, Preorder (t β)] [∀ {β : Type}, OrderBot (t β)]
     [Sem act s (t s)] [Sem test s (t Bool)]
@@ -199,8 +191,7 @@ lemma lin_rec_guard_left_aux {t : Type → Type} {s act test : Type}
   | H u ih =>
     ext σ
     unfold lin_rec; refine if_congr (Iff.refl _) rfl ?_
-    let e := Equiv.finsetCongr <| guard_left_next p q b hx hx' hd u hu
-    refine Nondet.nondet_congr e ?_; ext ⟨y, hy⟩
+    refine Nondet.finset_congr (guard_left_next p q b hx hx' hd u hu) ?_; ext ⟨y, hy⟩
     have hyu : y ∈ u := (Finset.mem_filter.mp hy).2.1
     have hyp : y ∈ p.nodes := hu hyu
     simp only [lin_node, Function.comp_apply]
@@ -305,8 +296,7 @@ lemma lin_rec_guard_right_aux {t : Type → Type} {s act test : Type}
     by_cases he : u = ∅
     · simp only [he, ↓reduceIte]
     · simp only [he, ↓reduceIte]
-      let e := Equiv.finsetCongr <| guard_right_next p q b hx hx' hd u hu
-      refine Nondet.nondet_congr e ?_; ext ⟨y, hy⟩
+      refine Nondet.finset_congr (guard_right_next p q b hx hx' hd u hu) ?_; ext ⟨y, hy⟩
       have hyu : y ∈ u := (Finset.mem_filter.mp hy).2.1
       have hyq : y ∈ q.nodes := hu hyu
       simp only [lin_node, Function.comp_apply]
@@ -386,10 +376,10 @@ lemma lin_guard {t : Type → Type} {s act test : Type}
   have hnext : next a a.nodes_finset = {x} := next_guard_eq_singleton p q b hx hx' hd
   have hu : Unique ↑(next a a.nodes_finset) := by
     rw [hnext]; infer_instance
-  refine (if_neg ?_).trans <| (@Nondet.nondet_singleton (t s) _ _ hu _).trans ?_
+  refine (if_neg ?_).trans ?_
   · exact Finset.ne_empty_of_mem (a.property.mem_toFinset.mpr (Set.mem_insert x _))
-  · have := @Unique.eq_default _ hu ⟨x, by rw [hnext]; exact Finset.mem_singleton_self _⟩
-    rw [← this]; simp only [lin_node]
+  · conv => lhs; exact Nondet.finset_singleton _ (next_guard_eq_singleton p q b hx hx' hd)
+    simp only [lin_node]
     have halab : a.lab x = Label.test b := by
       simp [a, Lpofin.lab, Lpo.lab, Lpo.guard, Lpo.par_gen, Lpo.par_base]
     rw [halab]
