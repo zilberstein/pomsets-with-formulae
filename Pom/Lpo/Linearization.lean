@@ -55,6 +55,8 @@ class ContinuousMonad (t : Type → Type) where
         toFun n := c₁ n >>= c₂ n
         monotone' _ _ hle := bind_mono (c₁.monotone' hle) (c₂.monotone' hle)
       }
+  bind_strict {α β : Type} [Monad t] [Bot (t α)] [Bot (t β)] :
+    ∀ {f : α → t β}, ⊥ >>= f = ⊥
 
 class Linearizable (t : Type → Type) (α : Type)
   extends Monad t, ContinuousMonad t, LawfulMonad t, Nondet (t α) where

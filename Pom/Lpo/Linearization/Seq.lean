@@ -29,13 +29,6 @@ lemma sat_and_indep {α : Type} {p q : Form α} {s u : Set α}
         · exact hxw hxww
     refine ⟨(v \ u) ∪ (w ∩ u), (hp v _ hsd1) ▸ hv, (hq w _ hsd2) ▸ hw⟩
 
-/-- The obvious equivalence between the coercions of two equal finsets. -/
-def finsetCongrEq {α : Type} {s t : Finset α} (h : s = t) : s ≃ t where
-  toFun x := ⟨x.val, h ▸ x.property⟩
-  invFun y := ⟨y.val, h.symm ▸ y.property⟩
-  left_inv _ := rfl
-  right_inv _ := rfl
-
 namespace Lpofin
 
 variable {l : Type} [PartialOrder l] [OrderBot l]
@@ -151,14 +144,16 @@ lemma seq_filter_copy (α β : Lpofin l) (f : CopyFn α β) (φ : α.branches)
   exact sat_and_indep hp (branch_dependsOn α φ.property) ((f.property φ).2.1.symm)
     (branch_sat α φ.property)
 
-/-- The copy phase, by strong induction on the remaining set `w ⊆ (f φ).nodes`.
-Mirror of `lin_rec_guard_right_aux`, using `seq_next_copy`, `seq_lab_copy`,
-`seq_filter_copy`. -/
-lemma seq_lin_rec_copy {t : Type → Type} {s act test : Type}
+variable {t : Type → Type} {s act test : Type}
     [Linearizable t s] [∀ {β : Type}, Preorder (t β)] [∀ {β : Type}, OrderBot (t β)]
     [PartialOrder act] [Sem act s (t s)]
     [PartialOrder test] [Sem test s (t Bool)]
-    (α β : Lpofin (Label act test)) (f : CopyFn α β) (φ : α.branches)
+    (α β : Lpofin (Label act test)) (f : CopyFn α β)
+
+/-- The copy phase, by strong induction on the remaining set `w ⊆ (f φ).nodes`.
+Mirror of `lin_rec_guard_right_aux`, using `seq_next_copy`, `seq_lab_copy`,
+`seq_filter_copy`. -/
+lemma seq_lin_rec_copy (φ : α.branches)
     (w : Finset Node) (hw : ↑w ⊆ (f φ).nodes) :
     ((seq α β f).lin_rec w : s → t s) = (f φ).lin_rec w := by
   classical
@@ -169,7 +164,7 @@ lemma seq_lin_rec_copy {t : Type → Type} {s act test : Type}
     by_cases he : w = ∅
     · simp only [he, ↓reduceIte]
     · simp only [he, ↓reduceIte]
-      refine Nondet.nondet_congr (finsetCongrEq (seq_next_copy α β f φ w hw)) ?_
+      refine Nondet.finset_congr (seq_next_copy α β f φ w hw) ?_
       ext ⟨y, hy⟩
       have hyw : y ∈ w := (Finset.mem_filter.mp hy).2.1
       have hyφ : y ∈ (f φ).nodes := hw hyw
@@ -194,15 +189,98 @@ lemma seq_lin_rec_copy {t : Type → Type} {s act test : Type}
           (fun z hz ↦ hw (filter_by_outcome_sub_erase hz |> Finset.mem_of_mem_erase))) σ
 
 /-- Linearizing `seq` on a whole copy equals linearizing `β` (copies are isomorphic to `β`). -/
-lemma seq_lin_copy {t : Type → Type} {s act test : Type}
-    [Linearizable t s] [∀ {β : Type}, Preorder (t β)] [∀ {β : Type}, OrderBot (t β)]
-    [PartialOrder act] [Sem act s (t s)]
-    [PartialOrder test] [Sem test s (t Bool)]
-    (α β : Lpofin (Label act test)) (f : CopyFn α β) (φ : α.branches) :
+lemma seq_lin_copy (φ : α.branches) :
     ((seq α β f).lin_rec (f φ).nodes_finset : s → t s) = lin β := by
   rw [seq_lin_rec_copy α β f φ (f φ).nodes_finset
     (fun _ hx ↦ (f φ).property.mem_toFinset.mp hx)]
   exact lin_isomorphic (f.property φ).1
+
+open Classical in
+noncomputable def active_branches (φ : Form Node) : Finset ↑α.branches :=
+    α.branches.attach.filter fun ψ ↦ (φ.and ψ).sat
+
+noncomputable def seq_nodes (u : Finset Node) (φ : Form Node) : Finset Node :=
+    u ∪ (active_branches α φ).biUnion fun φ ↦ (f φ).nodes_finset
+
+lemma seq_next_alpha
+    (u : Finset Node) (φ : Form Node) (hu : u.Nonempty) :
+    next (seq α β f) (seq_nodes α β f u φ) = next α u := by sorry
+
+lemma lin_rec_seq
+    (u : Finset Node)
+    (φ : Form Node)
+    (hsat : φ.sat)
+    (hbr :
+      -- The execution is stuck
+      (∀ {v}, φ v → ∃ x ∈ u, α.form x v ∧ α.lab x = ⊥) ∨
+      -- Or φ is on the way to becoming a branch
+      (∃ T ⊆ α.extens,
+        φ = α.conj T ∧
+        (∀ x ∈ α.val.bots, ((α.conj T).and (α.form x)).sat → x ∈ u) ∧
+        ∀ x ∉ T, x ∈ α.extens → Form.sat ((α.conj T).and (α.form x)) → x ∈ u)) :
+    (lin_rec (seq α β f) (seq_nodes α β f u φ) : s → t s) =
+    fun σ ↦ lin_rec α u σ >>= lin β := by
+  classical
+  induction u using Finset.strongInduction generalizing φ with
+  | H u ih =>
+    ext σ; nth_rw 2 [lin_rec]; by_cases hu : u = ∅
+    · subst hu; simp only [↓reduceIte, pure_bind]
+      have hφ : φ ∈ α.branches := by
+        refine α.branches_finite.mem_toFinset.mpr <| (Set.mem_image _ _ _).mpr ?_
+        rcases hbr with hstk | ⟨T, hext, rfl, hstk, hmax⟩
+        · have ⟨v, hform⟩ := hsat
+          have ⟨_, hc, _⟩ := hstk hform
+          contradiction
+        · refine ⟨T, ⟨?_, hext, hsat, ?_, ?_⟩, rfl⟩
+          · have ⟨x, hx, hroot⟩ := α.val.property.rel.single_rooted
+            refine ⟨x, ?_⟩; by_contra hT
+            refine hmax _ hT ?_ ?_ |> Finset.notMem_empty _
+            · refine Finset.mem_filter.mpr ⟨?_, ?_⟩
+              · exact α.property.mem_toFinset.mpr hx
+              · conv => arg 1; lhs; exact form_root_true hx hroot
+                have ⟨v, hform⟩ := hsat
+                intro h; have ⟨⟨y, hy⟩, hyf⟩ := h v True.intro
+                exact Finset.notMem_empty _ <| hstk _ hy ⟨v, hform, hyf⟩
+            · conv => arg 1; arg 2; exact form_root_true hx hroot
+              have ⟨v, hform⟩ := hsat; exact ⟨v, hform, True.intro⟩
+          · intro v hform ⟨⟨x, hx⟩, hxf⟩
+            refine Finset.notMem_empty _ <| hstk _ hx ⟨_, hform, hxf⟩
+          · intro T' hssub he hsat
+            have ⟨x, hT', hT⟩ := Finset.exists_of_ssubset hssub
+            refine hmax x hT (he hT') ?_ |> Finset.notMem_empty _
+            have ⟨v, hform⟩ := hsat; refine ⟨v, ?_, ?_⟩
+            · intro ⟨y, hy⟩; exact hform y (hssub.subset hy)
+            · exact hform _ hT'
+      have hactv : α.active_branches φ = {⟨φ, hφ⟩} := by
+        ext ⟨ψ, hψ⟩; constructor
+        · intro h; refine Finset.mem_singleton.mpr ?_; ext1; simp only
+          by_contra hne; have := branches_not_mutually_sat hψ hφ hne
+          have ⟨_, v, h₁, h₂⟩ := Finset.mem_filter.mp h
+          exact this v ⟨h₂, h₁⟩
+        · intro h; obtain rfl := Finset.mem_singleton.mp h |> congrArg Subtype.val
+          refine Finset.mem_filter.mpr ⟨Finset.mem_attach _ _, ?_⟩
+          have ⟨v, hform⟩ := hsat
+          exact ⟨v, hform, hform⟩
+      have hn : seq_nodes α β f ∅ φ = (f ⟨φ, hφ⟩).nodes_finset := by
+        unfold seq_nodes; rw [Finset.empty_union, hactv, Finset.singleton_biUnion]
+      rw [hn]; exact congrFun (seq_lin_copy _ _ _ _) _
+    · simp only [hu, ↓reduceIte]
+      have : (α.seq_nodes β f u φ) ≠ ∅ := by
+        intro h; apply hu; exact Finset.union_eq_empty.mp h |> And.left
+      unfold lin_rec; simp only [this, ↓reduceIte]
+      rw [Linearizable.bind_additive]
+      refine Nondet.finset_congr (seq_next_alpha _ _ _ _ _ (Finset.nonempty_of_ne_empty hu)) ?_
+      ext ⟨x, hx⟩; simp only [Function.comp_apply, lin_node]
+      have : (α.seq β f).lab x = α.lab x := sorry
+      rw [this]; cases hl : α.lab x with
+      | bot => symm; exact ContinuousMonad.bind_strict
+      | fork =>
+        simp only
+        have : (α.seq_nodes β f u φ).erase x = α.seq_nodes β f (u.erase x) φ := sorry
+        rw [this]
+        sorry
+      | act a => sorry
+      | test b => sorry
 
 lemma lin_seq {t : Type → Type} {s act test : Type}
     [Linearizable t s]
@@ -210,6 +288,21 @@ lemma lin_seq {t : Type → Type} {s act test : Type}
     [PartialOrder act] [Sem act s (t s)]
     [PartialOrder test] [Sem test s (t Bool)]
     (α β : Lpofin (Label act test)) (f : CopyFn α β) :
-    (lin (seq α β f) : s → t s) = fun σ ↦ lin α σ >>= lin β := by sorry
+    (lin (seq α β f) : s → t s) = fun σ ↦ lin α σ >>= lin β := by
+  unfold lin
+  have : (α.seq β f).nodes_finset = α.seq_nodes β f α.nodes_finset Form.true := sorry
+  rw [this]
+  refine α.lin_rec_seq β f _ _ ⟨∅, True.intro⟩ ?_
+  by_cases hstk : ∀ v, α.stuck v
+  · left; intro v _; have ⟨⟨x, hx, hbot⟩, hform⟩ := hstk v
+    refine ⟨x, ?_, hform, hbot⟩
+    exact α.property.mem_toFinset.mpr hx
+  · right; refine ⟨∅, Finset.empty_subset _, ?_, ?_, ?_⟩
+    · ext v; constructor
+      · intro _ ⟨_, h⟩; contradiction
+      · intro _; trivial
+    · intro x hx _; exact α.property.mem_toFinset.mpr hx.1
+    · classical
+      intro x _ hext _; exact Finset.mem_filter.mp hext |> And.left
 
 end Lpofin
