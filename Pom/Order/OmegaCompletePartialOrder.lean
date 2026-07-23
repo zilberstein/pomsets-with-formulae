@@ -192,6 +192,7 @@ def lpo_chain_to_pom {l : Type} [PartialOrder l] [OrderBot l] (c : Chain (Lpo l)
   toFun n := Quotient.mk _ (c n)
   monotone' i j hle := ⟨c i, rfl, c j, rfl, c.monotone' hle⟩
 }
+
 lemma lpo_chain_to_pom_lub {l : Type} [DCPO l] [OrderBot l] [ScottCompact l]
     (c : Chain (Lpo l)) :
     IsLUB (Set.range (lpo_chain_to_pom c)) (Quotient.mk _ (ωSup c)) :=
@@ -206,3 +207,41 @@ noncomputable instance {l : Type} [DCPO l] [OrderBot l] [ScottCompact l] :
   ωSup_le c p h := by
     refine (lpo_chain_pom_chain_lub (exists_lpo_chain_of_pom_chain c).choose_spec).2 ?_
     intro q hq; obtain ⟨i, rfl⟩ := Set.mem_range.mpr hq; exact h i
+
+namespace Pom
+
+lemma upper_bound_of_compact_pom (c : Chain (Pom l)) (n : ℕ) :
+    ∃ i, (ωSup c).trunc n ≤ (c i).trunc n := by
+  have ⟨c', hc⟩ := exists_lpo_chain_of_pom_chain c
+  have ⟨i, hle⟩ := upper_bound_of_compact c' n
+  refine ⟨i, (ωSup c').trunc n, ?_, (c' i).trunc n, ?_, ?_⟩
+  · refine Pomfin.val_mem_to_pom.mp (mem_trunc ?_)
+    have ⟨hle, hge⟩ := lpo_chain_pom_chain_lub hc
+    simp only [upperBounds, Set.mem_range, forall_exists_index, forall_apply_eq_imp_iff,
+      Set.mem_setOf_eq, lowerBounds] at hle hge
+    refine le_antisymm ?_ ?_
+    · exact ωSup_le _ _ hle
+    · exact hge (le_ωSup _)
+  · exact Pomfin.val_mem_to_pom.mp (mem_trunc (hc i))
+  · exact Lpo.trunc_le_trunc hle
+
+lemma trunc_continuous (n : ℕ) :
+    ωScottContinuous (fun (p : Pom l) ↦ (p.trunc n).to_pom) := by
+  refine ωScottContinuous.of_monotone_map_ωSup ⟨?_, ?_⟩
+  · intro _ _ hle; exact Pom.trunc_mono hle (le_refl n)
+  · intro c; refine le_antisymm ?_ ?_
+    · have ⟨i, hle⟩ := upper_bound_of_compact_pom c n
+      refine (Pomfin.to_pom_mono hle).trans ?_
+      refine le_of_eq_of_le ?_ <| le_ωSup _ i
+      rfl
+    · simp only [ωSup_le_iff, Chain.coe_map, OrderHom.coe_mk, Function.comp_apply]
+      intro i; refine Pomfin.to_pom_mono <| Pom.trunc_mono ?_ (le_refl n)
+      exact le_ωSup _ _
+
+lemma sup_trunc_eq (c : Chain (Pom l)) (n : ℕ) :
+    ∃ i, (ωSup c).trunc n = (c i).trunc n := by
+  have ⟨i, hle⟩ := upper_bound_of_compact_pom c n
+  refine ⟨i, le_antisymm hle ?_⟩
+  exact trunc_mono (le_ωSup _ _) (le_refl _)
+
+end Pom

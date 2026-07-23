@@ -13,21 +13,6 @@ noncomputable def ext {X : Type} [OmegaCompletePartialOrder X]
     monotone' _ _ hle := hf (trunc_mono (le_refl _) hle)
   }
 
-lemma upper_bound_of_compact_pom (c : Chain (Pom l)) (n : ℕ) :
-    ∃ i, (ωSup c).trunc n ≤ (c i).trunc n := by
-  have ⟨c', hc⟩ := exists_lpo_chain_of_pom_chain c
-  have ⟨i, hle⟩ := upper_bound_of_compact c' n
-  refine ⟨i, (ωSup c').trunc n, ?_, (c' i).trunc n, ?_, ?_⟩
-  · refine Pomfin.val_mem_to_pom.mp (mem_trunc ?_)
-    have ⟨hle, hge⟩ := lpo_chain_pom_chain_lub hc
-    simp only [upperBounds, Set.mem_range, forall_exists_index, forall_apply_eq_imp_iff,
-      Set.mem_setOf_eq, lowerBounds] at hle hge
-    refine le_antisymm ?_ ?_
-    · exact ωSup_le _ _ hle
-    · exact hge (le_ωSup _)
-  · exact Pomfin.val_mem_to_pom.mp (mem_trunc (hc i))
-  · exact Lpo.trunc_le_trunc hle
-
 theorem ext_continuous {X : Type} [OmegaCompletePartialOrder X] {f : Pomfin l → X}
     (hf : Monotone f) : ωScottContinuous (ext _ hf) := by
   have hmono : Monotone (ext f hf) := by
