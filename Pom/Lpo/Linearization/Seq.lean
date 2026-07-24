@@ -155,7 +155,7 @@ Mirror of `lin_rec_guard_right_aux`, using `seq_next_copy`, `seq_lab_copy`,
 `seq_filter_copy`. -/
 lemma seq_lin_rec_copy (φ : α.branches)
     (w : Finset Node) (hw : ↑w ⊆ (f φ).nodes) :
-    ((seq α β f).lin_rec w : s → t s) = (f φ).lin_rec w := by
+    ((seq α β f).lin_rec w φ.val : s → t s) = (f φ).lin_rec w Form.true := by
   classical
   induction w using Finset.strongInduction with
   | H w ih =>
@@ -218,8 +218,8 @@ lemma lin_rec_seq
         φ = α.conj T ∧
         (∀ x ∈ α.val.bots, ((α.conj T).and (α.form x)).sat → x ∈ u) ∧
         ∀ x ∉ T, x ∈ α.extens → Form.sat ((α.conj T).and (α.form x)) → x ∈ u)) :
-    (lin_rec (seq α β f) (seq_nodes α β f u φ) : s → t s) =
-    fun σ ↦ lin_rec α u σ >>= lin β := by
+    (lin_rec (seq α β f) (seq_nodes α β f u φ) φ : s → t s) =
+    fun σ ↦ lin_rec α u φ σ >>= lin β := by
   classical
   induction u using Finset.strongInduction generalizing φ with
   | H u ih =>

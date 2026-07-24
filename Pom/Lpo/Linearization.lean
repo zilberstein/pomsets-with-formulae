@@ -425,8 +425,9 @@ lemma lin_node_isomorphic {m : Type → Type} {α act test : Type}
     [Sem act α (m α)] [Sem test α (m Bool)]
     {X : Set Node} {φ : Form Node}
     {a : Lpofin (Label act test)} {e : a.nodes ≃ X} {s : Finset Node}
-    (hs : ↑s ⊆ a.nodes) {x : Node} (hx : x ∈ s)
+    (hs : ↑s ⊆ a.nodes) (hφ : φ.DependsOn a.nodes) {x : Node} (hx : x ∈ s)
     (ih : ∀ {t ψ} (ht : t ⊂ s),
+      ψ.DependsOn a.nodes →
       (a.lin_rec t ψ : α → m α) =
       (a.permute e).lin_rec
         (Finset.equiv_image e t (fun _ h ↦ ht.subset h |> hs))
@@ -445,22 +446,45 @@ lemma lin_node_isomorphic {m : Type → Type} {α act test : Type}
   | Label.bot => rfl
   | Label.fork =>
     simp only; rw [Finset.equiv_image_erase hx]
-    refine congrFun (ih ?_) _; exact Finset.erase_ssubset hx
+    refine congrFun (ih ?_ hφ) _; exact Finset.erase_ssubset hx
   | Label.act aa =>
     simp only; refine congrArg₂ _ rfl ?_; rw [Finset.equiv_image_erase hx]
-    refine ih ?_; exact Finset.erase_ssubset hx
+    refine ih ?_ hφ; exact Finset.erase_ssubset hx
   | Label.test bb =>
     simp only; refine congrArg₂ _ rfl ?_; ext r
     rw [filter_by_outcome_equiv_image hx, form_extend_equiv e φ (hs hx) r]
-    refine congrFun (ih ?_) _
-    exact ssubset_of_subset_of_ssubset filter_by_outcome_sub_erase (Finset.erase_ssubset hx)
+    refine congrFun (ih ?_ ?_) _
+    · exact ssubset_of_subset_of_ssubset filter_by_outcome_sub_erase (Finset.erase_ssubset hx)
+    · rw [← Set.union_self a.nodes]; apply Form.DependsOn.and hφ
+      apply Form.DependsOn.monotone _ (Set.singleton_subset_iff.mpr <| hs hx)
+      cases r <;> simp only [Bool.false_eq_true, ↓reduceIte]
+      · exact Form.DependsOn.literal.not
+      · exact Form.DependsOn.literal
+
+lemma form_imp_permute {l : Type} [Bot l]
+    {a : Lpofin l} {Y : Set Node} {e : a.nodes ≃ Y} {φ : Form Node} {x : Node}
+    (hx : x ∈ a.nodes) (hφ : φ.DependsOn a.nodes) :
+    φ ≤ a.form x ↔ φ.permute e ≤ (a.permute e).form (e ⟨x, hx⟩).val := by
+  classical
+  constructor
+  · intro himp v h
+    apply Lpo.form_inter_nodes_sat_iff.mpr;
+    conv in v ∩ _ => exact (Form.image_inv _ e.symm).symm
+    rw [e.symm_symm]; exact (Lpo.permute_form_sat_iff _).mp (himp _ h)
+  · intro himp v h
+    apply (Lpo.permute_form_sat_iff hx (e := e)).mpr
+    refine himp _ ?_; unfold Form.permute; conv => arg 1; exact Form.image_inv v e
+    refine (hφ _ _ ?_).mp h; apply Set.disjoint_left.mpr fun y hy hy' ↦ ?_
+    rcases Set.mem_symmDiff.mp hy with ⟨hv, hv'⟩ | ⟨hv, hv'⟩
+    · exact hv' ⟨hv, hy'⟩
+    · exact hv' hv.1
 
 lemma lin_rec_isomorphic {m : Type → Type} {α act test : Type}
     [Linearizable m α] [Bot (m α)]
     [Sem act α (m α)] [Sem test α (m Bool)]
     {X : Set Node} {φ : Form Node}
     {a : Lpofin (Label act test)} (e : a.nodes ≃ X) {s : Finset Node}
-    (hs : ↑s ⊆ a.nodes) :
+    (hs : ↑s ⊆ a.nodes) (hφ : φ.DependsOn a.nodes) :
     (lin_rec a s φ : α → m α) =
     lin_rec (a.permute e) (s.equiv_image e hs) (φ.permute e) := by
   induction s using Finset.strongInduction generalizing φ with
@@ -472,9 +496,10 @@ lemma lin_rec_isomorphic {m : Type → Type} {α act test : Type}
       · intro h; ext x; simp only [Finset.notMem_empty, iff_false]; intro hc
         refine Finset.notMem_empty (e ⟨x, hs hc⟩).val ?_; rw [← h]; exact s.mem_equiv_image hc
     · refine Nondet.nondet_congr next_equiv ?_
-      ext ⟨x, hx⟩; classical refine if_congr ?_ ?_ rfl
-      · sorry
-      · refine congrFun (lin_node_isomorphic hs _ ?_) _
+      ext ⟨x, hx⟩; classical refine if_congr (form_imp_permute ?_ hφ) ?_ rfl
+      · apply a.property.mem_toFinset.mp
+        classical exact hx |> Finset.mem_filter.mp |>.1
+      · refine congrFun (lin_node_isomorphic hs hφ _ ?_) _
         intro t ψ ht; apply ih t ht
 
 lemma lin_isomorphic {m : Type → Type} {α act test : Type}
@@ -483,9 +508,10 @@ lemma lin_isomorphic {m : Type → Type} {α act test : Type}
     {a b : Lpofin (Label act test)} (h : a ≈ b) :
     (lin a : α →  m α) = lin b := by
   unfold lin; have ⟨e, h⟩ := h
-  refine (lin_rec_isomorphic e ?_).trans ?_
+  refine (lin_rec_isomorphic e ?_ ?_).trans ?_
   · conv => lhs; exact a.property.coe_toFinset
     exact subset_refl _
+  · exact Form.DependsOn.monotone _ (Set.empty_subset _) Form.DependsOn.true
   · congr
     · exact Subtype.ext h
     · ext x; rw [Finset.mem_equiv_image_iff]; constructor
