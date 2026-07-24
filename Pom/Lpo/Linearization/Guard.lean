@@ -178,12 +178,63 @@ lemma guard_left_filter {act test : Type}
         · exact hxy heq.symm
         · exact hb hv
 
+/-- For a node `y` on the left branch of a guard, the guard's formula at `y` holds of
+a valuation `v` iff `p`'s formula holds and the root `x` is present in `v`. -/
+lemma guard_left_form_eq {act test : Type}
+    (p q : Lpofin (Label act test)) (b : test)
+    {x y : Node} (hx : x ∉ p.nodes) (hx' : x ∉ q.nodes)
+    (hd : Disjoint p.nodes q.nodes) (hy : y ∈ p.nodes) (v : Set Node) :
+    (Lpofin.guard hx hx' hd (Label.test_ne_bot b)).form y v ↔ (p.form y v ∧ x ∈ v) := by
+  have hxy : x ≠ y := fun h ↦ hx (h ▸ hy)
+  have hyq : y ∉ q.nodes := Set.disjoint_left.mp hd hy
+  simp only [Lpofin.form, guard, Lpo.form, Lpo.guard, Lpo.par_gen, Lpo.par_base, Form.and,
+    Form.literal]
+  constructor
+  · rintro (heq | ⟨_, hpf⟩ | ⟨hyq', _⟩)
+    · exact (hxy heq).elim
+    · exact hpf
+    · exact (hyq hyq').elim
+  · intro hpf
+    exact Or.inr (Or.inl ⟨hy, hpf⟩)
+
+/-- The path-condition test in `lin_rec` behaves the same on the left branch of a guard as
+on `p` itself, provided the accumulated path condition `φ` depends only on `p`'s nodes. -/
+lemma guard_left_le_iff {act test : Type}
+    (p q : Lpofin (Label act test)) (b : test)
+    {x y : Node} (hx : x ∉ p.nodes) (hx' : x ∉ q.nodes)
+    (hd : Disjoint p.nodes q.nodes) (φ : Form Node) (hφ : φ.DependsOn p.nodes)
+    (hy : y ∈ p.nodes) :
+    ((φ.and (Form.literal x)) ≤ (Lpofin.guard hx hx' hd (Label.test_ne_bot b)).form y) ↔
+    (φ ≤ p.form y) := by
+  have hpy : (p.form y).DependsOn {z | p.rel z y} := (p.val.property.form y hy).1
+  have hpysub : {z | p.rel z y} ⊆ p.nodes := fun z hz ↦ (p.val.property.rel_dom hz).1
+  have hdisj : ∀ v : Set Node, Disjoint (symmDiff v (insert x v)) p.nodes := by
+    intro v
+    rw [Set.disjoint_left]
+    intro a ha hpa
+    rcases Set.mem_symmDiff.mp ha with ⟨hav, hain⟩ | ⟨hain, hav⟩
+    · exact hain (Set.mem_insert_of_mem x hav)
+    · rcases Set.mem_insert_iff.mp hain with rfl | h
+      · exact hx hpa
+      · exact hav h
+  constructor
+  · intro H v hv
+    have hxv : x ∈ insert x v := Set.mem_insert x v
+    have hφv' : φ (insert x v) := (hφ v (insert x v) (hdisj v)) ▸ hv
+    have hg := (guard_left_form_eq p q b hx hx' hd hy (insert x v)).mp
+      (H (insert x v) ⟨hφv', hxv⟩)
+    rw [hpy v (insert x v) (Set.disjoint_of_subset_right hpysub (hdisj v))]
+    exact hg.1
+  · intro H v hv
+    exact (guard_left_form_eq p q b hx hx' hd hy v).mpr ⟨H v hv.1, hv.2⟩
+
 lemma lin_rec_guard_left_aux {t : Type → Type} {s act test : Type}
     [Linearizable t s] [∀ {β : Type}, Preorder (t β)] [∀ {β : Type}, OrderBot (t β)]
     [Sem act s (t s)] [Sem test s (t Bool)]
     (p q : Lpofin (Label act test)) (b : test)
     {x : Node} (hx : x ∉ p.nodes) (hx' : x ∉ q.nodes)
-    (hd : Disjoint p.nodes q.nodes) (u : Finset Node) (φ : Form Node) (hu : ↑u ⊆ p.nodes) :
+    (hd : Disjoint p.nodes q.nodes) (u : Finset Node) (φ : Form Node)
+    (hφ : φ.DependsOn p.nodes) (hu : ↑u ⊆ p.nodes) :
     ((Lpofin.guard hx hx' hd (Label.test_ne_bot b)).lin_rec u (φ.and (Form.literal x)) : s → t s) =
     p.lin_rec u φ := by
   classical
@@ -192,29 +243,36 @@ lemma lin_rec_guard_left_aux {t : Type → Type} {s act test : Type}
     ext σ
     unfold lin_rec; refine if_congr (Iff.refl _) rfl ?_
     refine Nondet.finset_congr (guard_left_next p q b hx hx' hd u hu) ?_; ext ⟨y, hy⟩
-    refine if_congr ?_ ?_ rfl
-    · apply iff_iff_eq.mpr; refine forall_congr ?_
-      sorry
-    · have hyu : y ∈ u := (Finset.mem_filter.mp hy).2.1
-      have hyp : y ∈ p.nodes := hu hyu
-      simp only [lin_node]
-      rw [guard_left_lab p q b hx hx' hd hyp]
-      match hl : p.lab y with
-      | Label.bot => rfl
-      | Label.fork =>
-        exact congrFun (ih (u.erase y) (Finset.erase_ssubset hyu) φ
-          (fun _ h ↦ hu (Finset.mem_of_mem_erase h))) σ
-      | Label.act ac =>
-        refine congrArg₂ Bind.bind rfl ?_; funext τ
-        exact congrFun (ih (u.erase y) (Finset.erase_ssubset hyu) φ
-          (fun _ h ↦ hu (Finset.mem_of_mem_erase h))) τ
-      | Label.test bb =>
-        refine congrArg₂ Bind.bind rfl ?_; funext r
-        rw [guard_left_filter p q b hx hx' hd u hu hyu r, Form.and_comm_assoc]
-        exact congrFun (ih (p.filter_by_outcome u y r)
-          (Finset.ssubset_of_subset_of_ssubset filter_by_outcome_sub_erase
-            (Finset.erase_ssubset hyu)) _
-          (fun z hz ↦ hu (filter_by_outcome_sub_erase hz |> Finset.mem_of_mem_erase))) σ
+    have hyu : y ∈ u := (Finset.mem_filter.mp hy).2.1
+    have hyp : y ∈ p.nodes := hu hyu
+    refine if_congr (guard_left_le_iff p q b hx hx' hd φ hφ hyp) ?_ rfl
+    simp only [lin_node]
+    rw [guard_left_lab p q b hx hx' hd hyp]
+    match hl : p.lab y with
+    | Label.bot => rfl
+    | Label.fork =>
+      exact congrFun (ih (u.erase y) (Finset.erase_ssubset hyu) φ hφ
+        (fun _ h ↦ hu (Finset.mem_of_mem_erase h))) σ
+    | Label.act ac =>
+      refine congrArg₂ Bind.bind rfl ?_; funext τ
+      exact congrFun (ih (u.erase y) (Finset.erase_ssubset hyu) φ hφ
+        (fun _ h ↦ hu (Finset.mem_of_mem_erase h))) τ
+    | Label.test bb =>
+      refine congrArg₂ Bind.bind rfl ?_; funext r
+      rw [guard_left_filter p q b hx hx' hd u hu hyu r, Form.and_comm_assoc]
+      have hφ' :
+          (φ.and (if r then Form.literal y else (Form.literal y).not)).DependsOn p.nodes := by
+        have hun : p.nodes ∪ {y} = p.nodes :=
+          Set.union_eq_self_of_subset_right (Set.singleton_subset_iff.mpr hyp)
+        rw [← hun]
+        refine Form.DependsOn.and hφ ?_
+        split
+        · exact Form.DependsOn.literal
+        · exact Form.DependsOn.literal.not
+      exact congrFun (ih (p.filter_by_outcome u y r)
+        (Finset.ssubset_of_subset_of_ssubset filter_by_outcome_sub_erase
+          (Finset.erase_ssubset hyu)) _ hφ'
+        (fun z hz ↦ hu (filter_by_outcome_sub_erase hz |> Finset.mem_of_mem_erase))) σ
 
 lemma guard_right_next {act test : Type}
     (p q : Lpofin (Label act test)) (b : test)
@@ -284,12 +342,63 @@ lemma guard_right_filter {act test : Type}
         intro h
         exact hb ((Set.mem_sdiff y).mp h).1
 
+/-- For a node `y` on the right branch of a guard, the guard's formula at `y` holds of
+a valuation `v` iff `q`'s formula holds and the root `x` is absent from `v`. -/
+lemma guard_right_form_eq {act test : Type}
+    (p q : Lpofin (Label act test)) (b : test)
+    {x y : Node} (hx : x ∉ p.nodes) (hx' : x ∉ q.nodes)
+    (hd : Disjoint p.nodes q.nodes) (hy : y ∈ q.nodes) (v : Set Node) :
+    (Lpofin.guard hx hx' hd (Label.test_ne_bot b)).form y v ↔ (q.form y v ∧ x ∉ v) := by
+  have hxy : x ≠ y := fun h ↦ hx' (h ▸ hy)
+  have hyp : y ∉ p.nodes := Set.disjoint_right.mp hd hy
+  simp only [Lpofin.form, guard, Lpo.form, Lpo.guard, Lpo.par_gen, Lpo.par_base, Form.and,
+    Form.literal, Form.not]
+  constructor
+  · rintro (heq | ⟨hyp', _⟩ | ⟨_, hqf⟩)
+    · exact (hxy heq).elim
+    · exact (hyp hyp').elim
+    · exact hqf
+  · intro hqf
+    exact Or.inr (Or.inr ⟨hy, hqf⟩)
+
+/-- The path-condition test in `lin_rec` behaves the same on the right branch of a guard as
+on `q` itself, provided the accumulated path condition `φ` depends only on `q`'s nodes. -/
+lemma guard_right_le_iff {act test : Type}
+    (p q : Lpofin (Label act test)) (b : test)
+    {x y : Node} (hx : x ∉ p.nodes) (hx' : x ∉ q.nodes)
+    (hd : Disjoint p.nodes q.nodes) (φ : Form Node) (hφ : φ.DependsOn q.nodes)
+    (hy : y ∈ q.nodes) :
+    ((φ.and (Form.literal x).not) ≤ (Lpofin.guard hx hx' hd (Label.test_ne_bot b)).form y) ↔
+    (φ ≤ q.form y) := by
+  have hqy : (q.form y).DependsOn {z | q.rel z y} := (q.val.property.form y hy).1
+  have hqysub : {z | q.rel z y} ⊆ q.nodes := fun z hz ↦ (q.val.property.rel_dom hz).1
+  have hdisj : ∀ v : Set Node, Disjoint (symmDiff v (v \ {x})) q.nodes := by
+    intro v
+    rw [Set.disjoint_left]
+    intro a ha hqa
+    rcases Set.mem_symmDiff.mp ha with ⟨hav, hain⟩ | ⟨hain, hav⟩
+    · by_cases hax : a = x
+      · exact hx' (hax ▸ hqa)
+      · exact hain ⟨hav, fun h ↦ hax (Set.mem_singleton_iff.mp h)⟩
+    · exact hav hain.1
+  constructor
+  · intro H v hv
+    have hxv : x ∉ v \ {x} := by simp
+    have hφv' : φ (v \ {x}) := (hφ v (v \ {x}) (hdisj v)) ▸ hv
+    have hg := (guard_right_form_eq p q b hx hx' hd hy (v \ {x})).mp
+      (H (v \ {x}) ⟨hφv', hxv⟩)
+    rw [hqy v (v \ {x}) (Set.disjoint_of_subset_right hqysub (hdisj v))]
+    exact hg.1
+  · intro H v hv
+    exact (guard_right_form_eq p q b hx hx' hd hy v).mpr ⟨H v hv.1, hv.2⟩
+
 lemma lin_rec_guard_right_aux {t : Type → Type} {s act test : Type}
     [Linearizable t s] [∀ {β : Type}, Preorder (t β)] [∀ {β : Type}, OrderBot (t β)]
     [Sem act s (t s)] [Sem test s (t Bool)]
     (p q : Lpofin (Label act test)) (b : test)
     {x : Node} (hx : x ∉ p.nodes) (hx' : x ∉ q.nodes)
-    (hd : Disjoint p.nodes q.nodes) (u : Finset Node) (φ : Form Node) (hu : ↑u ⊆ q.nodes) :
+    (hd : Disjoint p.nodes q.nodes) (u : Finset Node) (φ : Form Node)
+    (hφ : φ.DependsOn q.nodes) (hu : ↑u ⊆ q.nodes) :
     ((Lpofin.guard hx hx' hd (Label.test_ne_bot b)).lin_rec u
       (φ.and (Form.literal x).not) : s → t s) =
     q.lin_rec u φ := by
@@ -299,29 +408,36 @@ lemma lin_rec_guard_right_aux {t : Type → Type} {s act test : Type}
     ext σ
     unfold lin_rec; refine if_congr (Iff.refl _) rfl ?_
     refine Nondet.finset_congr (guard_right_next p q b hx hx' hd u hu) ?_; ext ⟨y, hy⟩
-    refine if_congr ?_ ?_ rfl
-    · apply iff_iff_eq.mpr; refine forall_congr fun v ↦ ?_
-      sorry
-    · have hyu : y ∈ u := (Finset.mem_filter.mp hy).2.1
-      have hyq : y ∈ q.nodes := hu hyu
-      simp only [lin_node]
-      rw [guard_right_lab p q b hx hx' hd hyq]
-      match hl : q.lab y with
-      | Label.bot => rfl
-      | Label.fork =>
-        exact congrFun (ih (u.erase y) (Finset.erase_ssubset hyu) φ
-          (fun _ h ↦ hu (Finset.mem_of_mem_erase h))) σ
-      | Label.act ac =>
-        refine congrArg₂ Bind.bind rfl ?_; funext τ
-        exact congrFun (ih (u.erase y) (Finset.erase_ssubset hyu) φ
-          (fun _ h ↦ hu (Finset.mem_of_mem_erase h))) τ
-      | Label.test bb =>
-        refine congrArg₂ Bind.bind rfl ?_; funext r
-        rw [guard_right_filter p q b hx hx' hd u hu hyu r, Form.and_comm_assoc]
-        exact congrFun (ih (q.filter_by_outcome u y r)
-          (Finset.ssubset_of_subset_of_ssubset filter_by_outcome_sub_erase
-            (Finset.erase_ssubset hyu)) _
-          (fun z hz ↦ hu (filter_by_outcome_sub_erase hz |> Finset.mem_of_mem_erase))) σ
+    have hyu : y ∈ u := (Finset.mem_filter.mp hy).2.1
+    have hyq : y ∈ q.nodes := hu hyu
+    refine if_congr (guard_right_le_iff p q b hx hx' hd φ hφ hyq) ?_ rfl
+    simp only [lin_node]
+    rw [guard_right_lab p q b hx hx' hd hyq]
+    match hl : q.lab y with
+    | Label.bot => rfl
+    | Label.fork =>
+      exact congrFun (ih (u.erase y) (Finset.erase_ssubset hyu) φ hφ
+        (fun _ h ↦ hu (Finset.mem_of_mem_erase h))) σ
+    | Label.act ac =>
+      refine congrArg₂ Bind.bind rfl ?_; funext τ
+      exact congrFun (ih (u.erase y) (Finset.erase_ssubset hyu) φ hφ
+        (fun _ h ↦ hu (Finset.mem_of_mem_erase h))) τ
+    | Label.test bb =>
+      refine congrArg₂ Bind.bind rfl ?_; funext r
+      rw [guard_right_filter p q b hx hx' hd u hu hyu r, Form.and_comm_assoc]
+      have hφ' :
+          (φ.and (if r then Form.literal y else (Form.literal y).not)).DependsOn q.nodes := by
+        have hun : q.nodes ∪ {y} = q.nodes :=
+          Set.union_eq_self_of_subset_right (Set.singleton_subset_iff.mpr hyq)
+        rw [← hun]
+        refine Form.DependsOn.and hφ ?_
+        split
+        · exact Form.DependsOn.literal
+        · exact Form.DependsOn.literal.not
+      exact congrFun (ih (q.filter_by_outcome u y r)
+        (Finset.ssubset_of_subset_of_ssubset filter_by_outcome_sub_erase
+          (Finset.erase_ssubset hyu)) _ hφ'
+        (fun z hz ↦ hu (filter_by_outcome_sub_erase hz |> Finset.mem_of_mem_erase))) σ
 
 lemma lin_guard_branch {t : Type → Type} {s act test : Type}
     [Linearizable t s] [∀ {β : Type}, Preorder (t β)] [∀ {β : Type}, OrderBot (t β)]
@@ -336,10 +452,12 @@ lemma lin_guard_branch {t : Type → Type} {s act test : Type}
       bif r then p.lin σ else q.lin σ := by
   dsimp only; cases r <;> simp only [cond_true, cond_false]
   · rw [filter_guard_root_false p q b hx hx' hd, ← Form.true_and (p := Form.not _)]
-    refine congrFun (lin_rec_guard_right_aux p q b hx hx' hd _ _ ?_) σ
+    refine congrFun (lin_rec_guard_right_aux p q b hx hx' hd _ _
+      (Form.DependsOn.monotone _ (Set.empty_subset _) Form.DependsOn.true) ?_) σ
     intro x hx; exact q.property.mem_toFinset.mp hx
   · rw [filter_guard_root_true p q b hx hx' hd, ← Form.true_and (p := Form.literal _)]
-    refine congrFun (lin_rec_guard_left_aux p q b hx hx' hd _ _ ?_) σ
+    refine congrFun (lin_rec_guard_left_aux p q b hx hx' hd _ _
+      (Form.DependsOn.monotone _ (Set.empty_subset _) Form.DependsOn.true) ?_) σ
     intro x hx; exact p.property.mem_toFinset.mp hx
 
 lemma lin_guard {t : Type → Type} {s act test : Type}
