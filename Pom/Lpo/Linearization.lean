@@ -3,6 +3,7 @@ import Pom.Lpo.Order
 import Pom.Lpo.Order.FinApprox
 import Pom.Lpo.Isomorphism
 import Pom.Lpo.Linearization.Label
+import Pom.Lpo.Operations.Seq.Isomorphism
 
 namespace Linearization
 
@@ -460,24 +461,6 @@ lemma lin_node_isomorphic {m : Type → Type} {α act test : Type}
       cases r <;> simp only [Bool.false_eq_true, ↓reduceIte]
       · exact Form.DependsOn.literal.not
       · exact Form.DependsOn.literal
-
-lemma form_imp_permute {l : Type} [Bot l]
-    {a : Lpofin l} {Y : Set Node} {e : a.nodes ≃ Y} {φ : Form Node} {x : Node}
-    (hx : x ∈ a.nodes) (hφ : φ.DependsOn a.nodes) :
-    φ ≤ a.form x ↔ φ.permute e ≤ (a.permute e).form (e ⟨x, hx⟩).val := by
-  classical
-  constructor
-  · intro himp v h
-    apply Lpo.form_inter_nodes_sat_iff.mpr;
-    conv in v ∩ _ => exact (Form.image_inv _ e.symm).symm
-    rw [e.symm_symm]; exact (Lpo.permute_form_sat_iff _).mp (himp _ h)
-  · intro himp v h
-    apply (Lpo.permute_form_sat_iff hx (e := e)).mpr
-    refine himp _ ?_; unfold Form.permute; conv => arg 1; exact Form.image_inv v e
-    refine (hφ _ _ ?_).mp h; apply Set.disjoint_left.mpr fun y hy hy' ↦ ?_
-    rcases Set.mem_symmDiff.mp hy with ⟨hv, hv'⟩ | ⟨hv, hv'⟩
-    · exact hv' ⟨hv, hy'⟩
-    · exact hv' hv.1
 
 lemma lin_rec_isomorphic {m : Type → Type} {α act test : Type}
     [Linearizable m α] [Bot (m α)]
