@@ -129,9 +129,8 @@ mutual
 
   noncomputable def lin_node {t : Type → Type} {α act test: Type}
       [Sem act α (t α)] [Sem test α (t Bool)] [Monad t] [Nondet (t α)] [Bot (t α)]
-      (a : Lpofin (Label act test)) (s : Finset Node) (x : Node) (hx : x ∈ s)
+      (a : Lpofin (Label act test)) (s : Finset Node) (x : Node) (_hx : x ∈ s)
       (st : α) : t α :=
-    have _h : (s.erase x).card < s.card := Finset.card_erase_lt_of_mem hx
     match a.lab x with
     | Label.bot => ⊥
     | Label.fork => lin_rec a (s.erase x) st
@@ -141,10 +140,11 @@ mutual
           fun (r : Bool) =>
             lin_rec a (filter_by_outcome a s x r) st
   termination_by (s.card, 0)
-  decreasing_by
-  · left; exact _h
-  · left; exact _h
-  · left; classical exact lt_of_lt_of_le' _h (Finset.card_filter_le _ _)
+  decreasing_by all_goals
+  · left; apply Finset.card_lt_card
+    refine ssubset_of_subset_of_ssubset ?_ (Finset.erase_ssubset _hx)
+    try trivial
+    try exact filter_by_outcome_sub_erase
 end
 
 noncomputable def lin {t : Type → Type} {α act test : Type}
@@ -190,7 +190,7 @@ lemma lin_node_mono {m : Type → Type} {α act test : Type}
       (lin_rec a (t ∩ a.nodes_finset) : α → m α) ≤ lin_rec b t) :
     (lin_node a (s ∩ a.nodes_finset) x hx σ : m α) ≤
     lin_node b s x (Finset.inter_subset_left hx) σ := by
-  unfold lin_node; simp only
+  unfold lin_node
   have ih' (h : a.lab x ≠ ⊥) :
       (lin_rec a (s.erase x ∩ a.nodes_finset) : α → m α) ≤
       lin_rec b (s.erase x) := by
