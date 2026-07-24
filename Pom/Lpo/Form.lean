@@ -43,6 +43,18 @@ instance : PartialOrder (Form α) where
 lemma mt {p q : Form α} (h : p ≤ q) : q.not ≤ p.not := by
   intro v hqn hp; exact hqn (h v hp)
 
+lemma true_and {p : Form α} : Form.true.and p = p := by
+  ext v; exact iff_iff_eq.mpr <| _root_.true_and _
+
+lemma and_comm {p q : Form α} : p.and q = q.and p := by
+  ext v; exact And.comm
+
+lemma and_assoc {p q r : Form α} : (p.and q).and r = p.and (q.and r) := by
+  ext v; exact _root_.and_assoc
+
+lemma and_comm_assoc {p q r : Form α} : (p.and q).and r = (p.and r).and q := by
+  rw [and_assoc, and_comm (p := q), ← and_assoc]
+
 def DependsOn (p : Form α) (s : Set α) : Prop :=
   ∀ v v', Disjoint (symmDiff v v') s → p v = p v'
 

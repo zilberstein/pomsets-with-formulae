@@ -114,31 +114,46 @@ lemma filter_by_outcome_sub_erase {l : Type} [Bot l]
     filter_by_outcome α s x b ⊆ s.erase x := by
   intro _ hy; exact Finset.mem_filter.mp hy |> And.left
 
+def compat {l : Type} [Bot l] (α : Lpofin l) (s : Finset Node) (x : Node) :=
+  ∀ y ∈ s, ((α.form y).and (α.form x)).sat
+
 mutual
   open Classical
 
   noncomputable def lin_rec {t : Type → Type} {α act test : Type}
     [Sem act α (t α)] [Sem test α (t Bool)] [Monad t] [Nondet (t α)] [Bot (t α)]
-    (a : Lpofin (Label act test)) (s : Finset Node) (st : α) : t α :=
+    (a : Lpofin (Label act test)) (s : Finset Node) (φ : Form Node) (st : α) : t α :=
     if s = ∅ then
       pure st
     else
       Nondet.nondet fun x : ↑(next a s) =>
-        lin_node a s x.val (Finset.mem_filter.mp x.property).2.1 st
+        -- If the formula of `x` is not compatible with the path condition, that means
+        -- that `x` was not filtered out through test evaluation, and therefore its
+        -- formula depends on nodes which are not tests. In that case, we consider the
+        -- execution faulty. This is impossible for any pomsets that are constructed via
+        -- `Pom.singleton`, `Pom.seq`, `Pom.guard`, or `Pom.par`, and are thus "binary branching"
+        if φ ≤ a.form x then
+          lin_node a s φ x.val (Finset.mem_filter.mp x.property).2.1 st
+        else
+          ⊥
     termination_by (s.card, 1)
 
   noncomputable def lin_node {t : Type → Type} {α act test: Type}
       [Sem act α (t α)] [Sem test α (t Bool)] [Monad t] [Nondet (t α)] [Bot (t α)]
-      (a : Lpofin (Label act test)) (s : Finset Node) (x : Node) (_hx : x ∈ s)
+      (a : Lpofin (Label act test)) (s : Finset Node) (φ : Form Node) (x : Node) (_hx : x ∈ s)
       (st : α) : t α :=
     match a.lab x with
     | Label.bot => ⊥
-    | Label.fork => lin_rec a (s.erase x) st
-    | Label.act ac => bind (Sem.sem ac st) (lin_rec a (s.erase x))
+    | Label.fork =>
+      lin_rec a (s.erase x) φ st
+    | Label.act ac =>
+      bind (Sem.sem ac st) (lin_rec a (s.erase x) φ)
     | Label.test b =>
         bind (Sem.sem b st)
           fun (r : Bool) =>
-            lin_rec a (filter_by_outcome a s x r) st
+            lin_rec a (filter_by_outcome a s x r)
+              (φ.and (if r then Form.literal x else (Form.literal x).not))
+              st
   termination_by (s.card, 0)
   decreasing_by all_goals
   · left; apply Finset.card_lt_card
@@ -150,7 +165,7 @@ end
 noncomputable def lin {t : Type → Type} {α act test : Type}
   [Sem act α (t α)] [Sem test α (t Bool)] [Monad t] [Nondet (t α)] [Bot (t α)]
   (a : Lpofin (Label act test)) : α → t α :=
-    lin_rec a a.nodes_finset
+    lin_rec a a.nodes_finset Form.true
 
 open Classical in
 lemma next_iso {l : Type} [Bot l] [LE l] {s : Finset Node} {a b : Lpofin l}
@@ -180,20 +195,20 @@ lemma lin_node_mono {m : Type → Type} {α act test : Type}
     [Linearizable m α] [∀ β, Preorder (m β)] [∀ β, OrderBot (m β)]
     [Preorder act] [Sem act α (m α)]
     [Preorder test] [Sem test α (m Bool)]
-    {s : Finset Node} {a b : Lpofin (Label act test)}
+    {s : Finset Node} {φ : Form Node} {a b : Lpofin (Label act test)}
     (hbot : ∀ x ∈ s, x ∈ a.nodes ∨ ∃ z ∈ a.val.bots, z ∈ s ∧ b.rel z x)
     (hle : a ≤ b)
     {x : Node} (hx : x ∈ s ∩ a.nodes_finset) (hxn : x ∈ next a (s ∩ a.nodes_finset)) {σ : α}
-    (ih : ∀ {t},
+    (ih : ∀ {t ψ},
       t ⊆ s.erase x →
       (∀ x ∈ t, x ∈ a.nodes ∨ ∃ z ∈ a.val.bots, z ∈ t ∧ b.rel z x) →
-      (lin_rec a (t ∩ a.nodes_finset) : α → m α) ≤ lin_rec b t) :
-    (lin_node a (s ∩ a.nodes_finset) x hx σ : m α) ≤
-    lin_node b s x (Finset.inter_subset_left hx) σ := by
+      (lin_rec a (t ∩ a.nodes_finset) ψ : α → m α) ≤ lin_rec b t ψ) :
+    (lin_node a (s ∩ a.nodes_finset) φ x hx σ : m α) ≤
+    lin_node b s φ x (Finset.inter_subset_left hx) σ := by
   unfold lin_node
   have ih' (h : a.lab x ≠ ⊥) :
-      (lin_rec a (s.erase x ∩ a.nodes_finset) : α → m α) ≤
-      lin_rec b (s.erase x) := by
+      (lin_rec a (s.erase x ∩ a.nodes_finset) φ : α → m α) ≤
+      lin_rec b (s.erase x) φ := by
     refine ih (le_refl <| s.erase x) ?_
     intro y hy; have ⟨hne, hy⟩ := Finset.mem_erase.mp hy
     rcases hbot _ hy with hya | ⟨z, hz, hzs, hrel⟩
@@ -235,11 +250,11 @@ theorem lin_rec_mono {m : Type → Type} {α act test : Type}
     [Linearizable m α] [∀ β, Preorder (m β)] [∀ β, OrderBot (m β)]
     [Preorder act] [Sem act α (m α)]
     [Preorder test] [Sem test α (m Bool)]
-    {s : Finset Node} {a b : Lpofin (Label act test)}
+    {s : Finset Node} {φ : Form Node} {a b : Lpofin (Label act test)}
     (hbot : ∀ x ∈ s, x ∈ a.nodes ∨ ∃ z ∈ a.val.bots, z ∈ s ∧ b.rel z x)
     (hle : a ≤ b) :
-    (lin_rec a (s ∩ a.nodes_finset) : α → m α) ≤ lin_rec b s := by
-  induction s using Finset.strongInduction with
+    (lin_rec a (s ∩ a.nodes_finset) φ : α → m α) ≤ lin_rec b s φ := by
+  induction s using Finset.strongInduction generalizing φ with
   | H s ih =>
     intro σ
     have heq := next_iso hle hbot; unfold lin_rec
@@ -255,10 +270,15 @@ theorem lin_rec_mono {m : Type → Type} {α act test : Type}
       conv => lhs; exact if_neg ht_emp
       conv => rhs; exact (if_neg h).trans <| Nondet.convert heq.symm
       refine Linearizable.nondet_mono ?_; intro ⟨x, hx⟩; simp only
-      apply lin_node_mono hbot hle _ hx
-      intro t ht; apply ih
-      refine Finset.ssubset_of_subset_of_ssubset ht <| Finset.erase_ssubset ?_
-      exact (Finset.mem_filter.mp hx).2.1 |> Finset.mem_inter.mp |> And.left
+      have hx' := hx |> Finset.mem_filter.mp |> And.left |> a.property.mem_toFinset.mp
+      by_cases hform : φ ≤ a.form x
+      · conv => lhs; exact if_pos hform
+        conv => rhs; exact if_pos <| le_of_le_of_eq hform (hle.form x hx')
+        apply lin_node_mono hbot hle _ hx
+        intro t ψ ht; apply ih t
+        refine Finset.ssubset_of_subset_of_ssubset ht <| Finset.erase_ssubset ?_
+        exact (Finset.mem_filter.mp hx).2.1 |> Finset.mem_inter.mp |> And.left
+      · exact le_of_eq_of_le (if_neg hform) bot_le
 
 theorem lin_mono {m : Type → Type} {α act test : Type}
     [Linearizable m α] [∀ β, Preorder (m β)] [∀ β, OrderBot (m β)]
@@ -386,18 +406,33 @@ lemma filter_by_outcome_equiv_image {l : Type} [Bot l]
         simp_all only [cond_false]; intro ⟨z, heq, hv⟩; apply hb
         obtain rfl := Subtype.val_injective heq |> e.injective; exact hv
 
+lemma form_extend_equiv {l : Type} [Bot l]
+    {α : Lpofin l} {Y : Set Node} {x : Node} (e : α.nodes ≃ Y) (φ : Form Node)
+    (hx : x ∈ α.nodes) (r : Bool) :
+    (φ.permute e).and
+      (if r = true then Form.literal (e ⟨x, hx⟩).val else (Form.literal (e ⟨x, hx⟩).val).not) =
+    (φ.and (if r = true then Form.literal x else (Form.literal x).not)).permute e := by
+  ext v; refine and_congr (Iff.refl _) ?_
+  cases r <;> simp only [Bool.false_eq_true, ↓reduceIte] <;> constructor
+  · rintro h ⟨y, rfl, hy⟩; apply h
+    simp only [Subtype.coe_eta, Equiv.apply_symm_apply]; exact hy
+  · rintro h hv; apply h; refine ⟨(e ⟨x, hx⟩), ?_, hv⟩; simp only [Equiv.symm_apply_apply]
+  · intro hv; refine ⟨(e ⟨x, hx⟩), ?_, hv⟩; simp only [Equiv.symm_apply_apply]
+  · rintro ⟨y, rfl, hy⟩; simp only [Subtype.coe_eta, Equiv.apply_symm_apply]; exact hy
+
 lemma lin_node_isomorphic {m : Type → Type} {α act test : Type}
     [Linearizable m α] [Bot (m α)]
     [Sem act α (m α)] [Sem test α (m Bool)]
-    {X : Set Node}
+    {X : Set Node} {φ : Form Node}
     {a : Lpofin (Label act test)} {e : a.nodes ≃ X} {s : Finset Node}
     (hs : ↑s ⊆ a.nodes) {x : Node} (hx : x ∈ s)
-    (ih : ∀ {t} (ht : t ⊂ s),
-      (a.lin_rec t : α → m α) =
-      (a.permute e).lin_rec (Finset.equiv_image e t
-        (fun _ h ↦ ht.subset h |> hs))) :
-    (lin_node a s x hx : α → m α) =
-    lin_node (a.permute e) (s.equiv_image e hs)
+    (ih : ∀ {t ψ} (ht : t ⊂ s),
+      (a.lin_rec t ψ : α → m α) =
+      (a.permute e).lin_rec
+        (Finset.equiv_image e t (fun _ h ↦ ht.subset h |> hs))
+        (ψ.permute e)) :
+    (lin_node a s φ x hx : α → m α) =
+    lin_node (a.permute e) (s.equiv_image e hs) (φ.permute e)
       (e ⟨x, hs hx⟩).val
       (s.mem_equiv_image hx) := by
   ext σ; simp only [lin_node]
@@ -416,18 +451,19 @@ lemma lin_node_isomorphic {m : Type → Type} {α act test : Type}
     refine ih ?_; exact Finset.erase_ssubset hx
   | Label.test bb =>
     simp only; refine congrArg₂ _ rfl ?_; ext r
-    rw [filter_by_outcome_equiv_image hx]; refine congrFun (ih ?_) _
+    rw [filter_by_outcome_equiv_image hx, form_extend_equiv e φ (hs hx) r]
+    refine congrFun (ih ?_) _
     exact ssubset_of_subset_of_ssubset filter_by_outcome_sub_erase (Finset.erase_ssubset hx)
 
 lemma lin_rec_isomorphic {m : Type → Type} {α act test : Type}
     [Linearizable m α] [Bot (m α)]
     [Sem act α (m α)] [Sem test α (m Bool)]
-    {X : Set Node}
-    {a : Lpofin (Label act test)} {e : a.nodes ≃ X} {s : Finset Node}
+    {X : Set Node} {φ : Form Node}
+    {a : Lpofin (Label act test)} (e : a.nodes ≃ X) {s : Finset Node}
     (hs : ↑s ⊆ a.nodes) :
-    (lin_rec a s : α → m α) =
-    lin_rec (a.permute e) (s.equiv_image e hs) := by
-  induction s using Finset.strongInduction with
+    (lin_rec a s φ : α → m α) =
+    lin_rec (a.permute e) (s.equiv_image e hs) (φ.permute e) := by
+  induction s using Finset.strongInduction generalizing φ with
   | H s ih =>
     ext σ; unfold lin_rec; refine if_congr ?_ rfl ?_
     · constructor
@@ -436,8 +472,10 @@ lemma lin_rec_isomorphic {m : Type → Type} {α act test : Type}
       · intro h; ext x; simp only [Finset.notMem_empty, iff_false]; intro hc
         refine Finset.notMem_empty (e ⟨x, hs hc⟩).val ?_; rw [← h]; exact s.mem_equiv_image hc
     · refine Nondet.nondet_congr next_equiv ?_
-      ext ⟨x, hx⟩; refine congrFun (lin_node_isomorphic hs _ ?_) _
-      intro t ht; apply ih t ht
+      ext ⟨x, hx⟩; classical refine if_congr ?_ ?_ rfl
+      · sorry
+      · refine congrFun (lin_node_isomorphic hs _ ?_) _
+        intro t ψ ht; apply ih t ht
 
 lemma lin_isomorphic {m : Type → Type} {α act test : Type}
     [Linearizable m α] [Bot (m α)]
@@ -445,12 +483,14 @@ lemma lin_isomorphic {m : Type → Type} {α act test : Type}
     {a b : Lpofin (Label act test)} (h : a ≈ b) :
     (lin a : α →  m α) = lin b := by
   unfold lin; have ⟨e, h⟩ := h
-  refine Eq.trans (lin_rec_isomorphic ?_) (congr_arg₂ _ (Subtype.ext h) ?_)
+  refine (lin_rec_isomorphic e ?_).trans ?_
   · conv => lhs; exact a.property.coe_toFinset
     exact subset_refl _
-  · ext x; rw [Finset.mem_equiv_image_iff]; constructor
-    · intro ⟨hx, _⟩; exact b.property.mem_toFinset.mpr hx
-    · intro hx; refine ⟨b.property.mem_toFinset.mp hx, ?_⟩
-      exact a.property.mem_toFinset.mpr <| Subtype.coe_prop _
+  · congr
+    · exact Subtype.ext h
+    · ext x; rw [Finset.mem_equiv_image_iff]; constructor
+      · intro ⟨hx, _⟩; exact b.property.mem_toFinset.mpr hx
+      · intro hx; refine ⟨b.property.mem_toFinset.mp hx, ?_⟩
+        exact a.property.mem_toFinset.mpr <| Subtype.coe_prop _
 
 end Lpofin

@@ -183,34 +183,37 @@ lemma lin_rec_guard_left_aux {t : Type → Type} {s act test : Type}
     [Sem act s (t s)] [Sem test s (t Bool)]
     (p q : Lpofin (Label act test)) (b : test)
     {x : Node} (hx : x ∉ p.nodes) (hx' : x ∉ q.nodes)
-    (hd : Disjoint p.nodes q.nodes) (u : Finset Node) (hu : ↑u ⊆ p.nodes) :
-    ((Lpofin.guard hx hx' hd (Label.test_ne_bot b)).lin_rec u : s → t s) = p.lin_rec u := by
+    (hd : Disjoint p.nodes q.nodes) (u : Finset Node) (φ : Form Node) (hu : ↑u ⊆ p.nodes) :
+    ((Lpofin.guard hx hx' hd (Label.test_ne_bot b)).lin_rec u (φ.and (Form.literal x)) : s → t s) = p.lin_rec u φ := by
   classical
-  induction u using Finset.strongInduction with
+  induction u using Finset.strongInduction generalizing φ with
   | H u ih =>
     ext σ
     unfold lin_rec; refine if_congr (Iff.refl _) rfl ?_
     refine Nondet.finset_congr (guard_left_next p q b hx hx' hd u hu) ?_; ext ⟨y, hy⟩
-    have hyu : y ∈ u := (Finset.mem_filter.mp hy).2.1
-    have hyp : y ∈ p.nodes := hu hyu
-    simp only [lin_node, Function.comp_apply]
-    rw [guard_left_lab p q b hx hx' hd hyp]
-    match hl : p.lab y with
-    | Label.bot => rfl
-    | Label.fork =>
-      exact congrFun (ih (u.erase y) (Finset.erase_ssubset hyu)
-        (fun _ h ↦ hu (Finset.mem_of_mem_erase h))) σ
-    | Label.act ac =>
-      refine congrArg₂ Bind.bind rfl ?_; funext τ
-      exact congrFun (ih (u.erase y) (Finset.erase_ssubset hyu)
-        (fun _ h ↦ hu (Finset.mem_of_mem_erase h))) τ
-    | Label.test bb =>
-      refine congrArg₂ Bind.bind rfl ?_; funext r
-      rw [guard_left_filter p q b hx hx' hd u hu hyu r]
-      exact congrFun (ih (p.filter_by_outcome u y r)
-        (Finset.ssubset_of_subset_of_ssubset filter_by_outcome_sub_erase
-          (Finset.erase_ssubset hyu))
-        (fun z hz ↦ hu (filter_by_outcome_sub_erase hz |> Finset.mem_of_mem_erase))) σ
+    refine if_congr ?_ ?_ rfl
+    · apply iff_iff_eq.mpr; refine forall_congr ?_
+      sorry
+    · have hyu : y ∈ u := (Finset.mem_filter.mp hy).2.1
+      have hyp : y ∈ p.nodes := hu hyu
+      simp only [lin_node]
+      rw [guard_left_lab p q b hx hx' hd hyp]
+      match hl : p.lab y with
+      | Label.bot => rfl
+      | Label.fork =>
+        exact congrFun (ih (u.erase y) (Finset.erase_ssubset hyu) φ
+          (fun _ h ↦ hu (Finset.mem_of_mem_erase h))) σ
+      | Label.act ac =>
+        refine congrArg₂ Bind.bind rfl ?_; funext τ
+        exact congrFun (ih (u.erase y) (Finset.erase_ssubset hyu) φ
+          (fun _ h ↦ hu (Finset.mem_of_mem_erase h))) τ
+      | Label.test bb =>
+        refine congrArg₂ Bind.bind rfl ?_; funext r
+        rw [guard_left_filter p q b hx hx' hd u hu hyu r, Form.and_comm_assoc]
+        exact congrFun (ih (p.filter_by_outcome u y r)
+          (Finset.ssubset_of_subset_of_ssubset filter_by_outcome_sub_erase
+            (Finset.erase_ssubset hyu)) _
+          (fun z hz ↦ hu (filter_by_outcome_sub_erase hz |> Finset.mem_of_mem_erase))) σ
 
 lemma guard_right_next {act test : Type}
     (p q : Lpofin (Label act test)) (b : test)
@@ -285,62 +288,39 @@ lemma lin_rec_guard_right_aux {t : Type → Type} {s act test : Type}
     [Sem act s (t s)] [Sem test s (t Bool)]
     (p q : Lpofin (Label act test)) (b : test)
     {x : Node} (hx : x ∉ p.nodes) (hx' : x ∉ q.nodes)
-    (hd : Disjoint p.nodes q.nodes) (u : Finset Node) (hu : ↑u ⊆ q.nodes) :
-    ((Lpofin.guard hx hx' hd (Label.test_ne_bot b)).lin_rec u : s → t s) = q.lin_rec u := by
+    (hd : Disjoint p.nodes q.nodes) (u : Finset Node) (φ : Form Node) (hu : ↑u ⊆ q.nodes) :
+    ((Lpofin.guard hx hx' hd (Label.test_ne_bot b)).lin_rec u
+      (φ.and (Form.literal x).not) : s → t s) =
+    q.lin_rec u φ := by
   classical
-  induction u using Finset.strongInduction with
+  induction u using Finset.strongInduction generalizing φ with
   | H u ih =>
     ext σ
-    unfold lin_rec
-    by_cases he : u = ∅
-    · simp only [he, ↓reduceIte]
-    · simp only [he, ↓reduceIte]
-      refine Nondet.finset_congr (guard_right_next p q b hx hx' hd u hu) ?_; ext ⟨y, hy⟩
-      have hyu : y ∈ u := (Finset.mem_filter.mp hy).2.1
+    unfold lin_rec; refine if_congr (Iff.refl _) rfl ?_
+    refine Nondet.finset_congr (guard_right_next p q b hx hx' hd u hu) ?_; ext ⟨y, hy⟩
+    refine if_congr ?_ ?_ rfl
+    · apply iff_iff_eq.mpr; refine forall_congr fun v ↦ ?_
+      sorry
+    · have hyu : y ∈ u := (Finset.mem_filter.mp hy).2.1
       have hyq : y ∈ q.nodes := hu hyu
-      simp only [lin_node, Function.comp_apply]
+      simp only [lin_node]
       rw [guard_right_lab p q b hx hx' hd hyq]
       match hl : q.lab y with
       | Label.bot => rfl
       | Label.fork =>
-        simp only
-        exact congrFun (ih (u.erase y) (Finset.erase_ssubset hyu)
+        exact congrFun (ih (u.erase y) (Finset.erase_ssubset hyu) φ
           (fun _ h ↦ hu (Finset.mem_of_mem_erase h))) σ
       | Label.act ac =>
-        simp only
-        congr 1
-        funext τ
-        exact congrFun (ih (u.erase y) (Finset.erase_ssubset hyu)
+        refine congrArg₂ Bind.bind rfl ?_; funext τ
+        exact congrFun (ih (u.erase y) (Finset.erase_ssubset hyu) φ
           (fun _ h ↦ hu (Finset.mem_of_mem_erase h))) τ
       | Label.test bb =>
-        simp only
-        congr 1
-        funext r
-        rw [guard_right_filter p q b hx hx' hd u hu hyu r]
+        refine congrArg₂ Bind.bind rfl ?_; funext r
+        rw [guard_right_filter p q b hx hx' hd u hu hyu r, Form.and_comm_assoc]
         exact congrFun (ih (q.filter_by_outcome u y r)
           (Finset.ssubset_of_subset_of_ssubset filter_by_outcome_sub_erase
-            (Finset.erase_ssubset hyu))
+            (Finset.erase_ssubset hyu)) _
           (fun z hz ↦ hu (filter_by_outcome_sub_erase hz |> Finset.mem_of_mem_erase))) σ
-
-lemma lin_rec_guard_left {t : Type → Type} {s act test : Type}
-    [Linearizable t s] [∀ {β : Type}, Preorder (t β)] [∀ {β : Type}, OrderBot (t β)]
-    [Sem act s (t s)] [Sem test s (t Bool)]
-    (p q : Lpofin (Label act test)) (b : test) (σ : s)
-    {x : Node} (hx : x ∉ p.nodes) (hx' : x ∉ q.nodes)
-    (hd : Disjoint p.nodes q.nodes) :
-    (Lpofin.guard hx hx' hd (Label.test_ne_bot b)).lin_rec (t := t) p.nodes_finset σ = p.lin σ := by
-  exact congrFun (lin_rec_guard_left_aux p q b hx hx' hd p.nodes_finset
-    (fun _ h ↦ p.property.mem_toFinset.mp h)) σ
-
-lemma lin_rec_guard_right {t : Type → Type} {s act test : Type}
-    [Linearizable t s] [∀ {β : Type}, Preorder (t β)] [∀ {β : Type}, OrderBot (t β)]
-    [Sem act s (t s)] [Sem test s (t Bool)]
-    (p q : Lpofin (Label act test)) (b : test) (σ : s)
-    {x : Node} (hx : x ∉ p.nodes) (hx' : x ∉ q.nodes)
-    (hd : Disjoint p.nodes q.nodes) :
-    (Lpofin.guard hx hx' hd (Label.test_ne_bot b)).lin_rec (t := t) q.nodes_finset σ = q.lin σ := by
-  exact congrFun (lin_rec_guard_right_aux p q b hx hx' hd q.nodes_finset
-    (fun _ h ↦ q.property.mem_toFinset.mp h)) σ
 
 lemma lin_guard_branch {t : Type → Type} {s act test : Type}
     [Linearizable t s] [∀ {β : Type}, Preorder (t β)] [∀ {β : Type}, OrderBot (t β)]
@@ -349,13 +329,17 @@ lemma lin_guard_branch {t : Type → Type} {s act test : Type}
     {x : Node} (hx : x ∉ p.nodes) (hx' : x ∉ q.nodes)
     (hd : Disjoint p.nodes q.nodes) :
     let a := Lpofin.guard hx hx' hd (Label.test_ne_bot b)
-    a.lin_rec (t := t) (a.filter_by_outcome a.nodes_finset x r) σ =
+    a.lin_rec (t := t) (a.filter_by_outcome a.nodes_finset x r)
+      (bif r then Form.literal x else (Form.literal x).not)
+      σ =
       bif r then p.lin σ else q.lin σ := by
-  dsimp only; cases r
-  · rw [filter_guard_root_false p q b hx hx' hd]
-    exact lin_rec_guard_right p q b σ hx hx' hd
-  · rw [filter_guard_root_true p q b hx hx' hd]
-    exact lin_rec_guard_left p q b σ hx hx' hd
+  dsimp only; cases r <;> simp only [cond_true, cond_false]
+  · rw [filter_guard_root_false p q b hx hx' hd, ← Form.true_and (p := Form.not _)]
+    refine congrFun (lin_rec_guard_right_aux p q b hx hx' hd _ _ ?_) σ
+    intro x hx; exact q.property.mem_toFinset.mp hx
+  · rw [filter_guard_root_true p q b hx hx' hd, ← Form.true_and (p := Form.literal _)]
+    refine congrFun (lin_rec_guard_left_aux p q b hx hx' hd _ _ ?_) σ
+    intro x hx; exact p.property.mem_toFinset.mp hx
 
 lemma lin_guard {t : Type → Type} {s act test : Type}
     [Linearizable t s] [∀ {β : Type}, Preorder (t β)] [∀ {β : Type}, OrderBot (t β)]
@@ -367,26 +351,24 @@ lemma lin_guard {t : Type → Type} {s act test : Type}
     fun σ ↦ Sem.sem b σ >>= fun r ↦ bif r then lin p σ else lin q σ := by
   classical
   ext σ
-  let a : Lpofin (Label act test) :=
-    ⟨Lpo.guard hx hx' hd (Label.test_ne_bot b), by
-      exact Set.finite_insert.mpr (Set.finite_union.mpr ⟨p.property, q.property⟩)⟩
-  change Lpofin.lin a σ = Sem.sem b σ >>= fun r ↦ bif r then p.lin σ else q.lin σ
   conv => lhs; unfold Lpofin.lin Lpofin.lin_rec
-  have hnext : next a a.nodes_finset = {x} := next_guard_eq_singleton p q b hx hx' hd
-  have hu : Unique ↑(next a a.nodes_finset) := by
-    rw [hnext]; infer_instance
+  have hnext := next_guard_eq_singleton p q b hx hx' hd
   refine (if_neg ?_).trans ?_
-  · exact Finset.ne_empty_of_mem (a.property.mem_toFinset.mpr (Set.mem_insert x _))
+  · exact Finset.ne_empty_of_mem ((Set.Finite.mem_toFinset _).mpr (Set.mem_insert x _))
   · conv => lhs; exact Nondet.finset_singleton _ (next_guard_eq_singleton p q b hx hx' hd)
     simp only [lin_node]
-    have halab : a.lab x = Label.test b := by
-      simp [a, Lpofin.lab, Lpo.lab, Lpo.guard, Lpo.par_gen, Lpo.par_base]
-    rw [halab]
-    change (Sem.sem b σ >>= fun r ↦ Lpofin.lin_rec (t := t) a
-      (a.filter_by_outcome a.nodes_finset x r) σ) = _
-    congr 1
-    funext r
-    exact lin_guard_branch p q b σ r hx hx' hd
+    have halab : (Lpofin.guard hx hx' hd (Label.test_ne_bot b)).lab x = Label.test b := by
+      simp only [lab, Lpo.lab, guard, Lpo.guard, Lpo.par_gen, Lpo.par_base, Set.mem_union,
+        ↓reduceIte]
+    simp only [halab]; refine (if_pos ?_).trans ?_
+    · refine le_of_eq <| (form_root_true (Set.mem_insert _ _) ?_).symm
+      rintro y (rfl | hy | hy) hne
+      · contradiction
+      · left; exact ⟨rfl, Or.inl hy⟩
+      · left; exact ⟨rfl, Or.inr hy⟩
+    · refine congrArg₂ Bind.bind rfl ?_
+      ext r; rw [Form.true_and, ← Bool.cond_eq_ite]
+      exact lin_guard_branch p q b σ r hx hx' hd
 
 lemma guard_trunc {l : Type} [Preorder l] [OrderBot l] {x : Node} {ℓ : l} {α β : Lpo l}
     {hx : x ∉ α.nodes} {hx' : x ∉ β.nodes} {hd : Disjoint α.nodes β.nodes}
