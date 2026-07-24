@@ -282,58 +282,32 @@ lemma seq_isomorphic {α α' β β' : Lpofin l} {f : CopyFn α β} {g : CopyFn �
                     rcases Set.mem_symmDiff.mp hy with ⟨hv, hv'⟩ | ⟨hv, hv'⟩
                     · exact hv' ⟨hv, hy'⟩
                     · exact hv' hv.1
-              · sorry
+              · constructor
+                · intro h;
+                  have := Set.subset_iUnion (fun φ ↦ (f φ).nodes) φ h
+                  rw [Equiv.union_symm] at this
+                  have := Equiv.mem_union_right this
+                  conv at h => arg 2; exact Equiv.union_symm_apply_right this
+                  exact Equiv.mem_iUnion_symm h (e := eb)
+                · intro hy
+                  have := Set.subset_iUnion (fun ψ ↦ (g ψ).nodes) (eb φ) hy
+                  conv => rhs; exact Equiv.union_symm_apply_right this
+                  conv => rhs; exact Equiv.iUnion_symm_apply hy (e := eb)
+                  sorry
         · constructor
           · intro ⟨_, hy', _⟩; exfalso; exact hy hy'
           · intro hrel; exfalso; exact hy ((seq _ _ _).val.property.rel_dom hrel).2
       · constructor
         · intro ⟨hx', _⟩; exfalso; exact hx hx'
         · intro hrel; exfalso; exact hx ((seq _ _ _).val.property.rel_dom hrel).1
+    · ext x; by_cases hx : x ∈ (α'.seq β' g).nodes
+      · conv => lhs; exact dif_pos hx
+        classical refine dite_congr ?_ ?_ ?_
+        · sorry
+        · sorry
+        · sorry
+      · conv => lhs; exact dif_neg hx
+        symm; exact (α'.seq β' g).val.property.lab_dom _ hx
     · sorry
-    · sorry
-
-
-
-    --   constructor
-    --   · rintro ⟨hx, hy, hrel | ⟨φ, hrel | ⟨hform, hj⟩⟩⟩
-    --     · left; unfold Lpofin.rel; rw [← he]; simp only [Lpo.permute, Lpo.rel, Rel.permute]
-    --       have ⟨hx', hy'⟩ := (α.val.property.rel_dom hrel)
-    --       have hx := Equiv.mem_union_symm_left hx'
-    --       have hy := Equiv.mem_union_symm_left hy'
-    --       refine ⟨hx, hy, ?_⟩
-    --       rw [Equiv.union_symm_apply_left hx, Equiv.union_symm_apply_left hy] at hrel
-    --       exact hrel
-    --     · right; use eb φ; left
-    --       have ⟨hx', hy'⟩ := (f φ).val.property.rel_dom hrel
-    --       rw [← h φ]; simp only [Lpofin.permute, rel, Lpo.permute, Lpo.rel, Rel.permute]
-    --       sorry
-    --     · sorry
-    --   · intro h; sorry
-    -- · simp only [seq, seq_base, Lpo.permute, Lpo.lab, Lpo.nodes]
-    --   ext x; by_cases hx : x ∈ α'.nodes ∪ ⋃ φ, (g φ).nodes
-    --   · conv => lhs; exact dif_pos hx
-    --     by_cases hx' : ∃ φ, x ∈ (g φ).nodes
-    --     · conv => rhs; exact dif_pos hx'
-    --       have ⟨φ, hx'⟩ := hx'
-    --       refine (dif_pos ?_).trans ?_
-    --       · use eb.symm φ; sorry
-    --       · conv => rhs; arg 1; arg 2; exact (eb.apply_symm_apply _).symm
-    --         conv => rhs; arg 1; exact (h _).symm
-    --         simp only [permute, lab, Lpo.permute, Lpo.lab]
-    --         sorry
-    --   · conv => lhs; exact dif_neg hx
-    --     symm; refine (dif_neg ?_).trans ?_
-    --     · intro ⟨φ, hφ⟩; apply hx; right; exact Set.mem_iUnion.mpr ⟨_, hφ⟩
-    --     · refine α'.val.property.lab_dom _ ?_
-    --       intro hx'; apply hx; left; exact hx'
-    -- · simp only [seq, seq_base, Lpo.permute, Lpo.form, Lpo.nodes]
-    --   ext x v; constructor
-    --   · intro ⟨hx, hform⟩
-    --     rcases hx with hx | hx
-    --     · rw [if_pos hx, Lpofin.form, ← he]
-    --       use hx
-
-    --       --conv => congrFun (if_pos hx) _
-
 
 end Lpofin
