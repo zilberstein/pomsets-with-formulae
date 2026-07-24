@@ -184,7 +184,8 @@ lemma lin_rec_guard_left_aux {t : Type → Type} {s act test : Type}
     (p q : Lpofin (Label act test)) (b : test)
     {x : Node} (hx : x ∉ p.nodes) (hx' : x ∉ q.nodes)
     (hd : Disjoint p.nodes q.nodes) (u : Finset Node) (φ : Form Node) (hu : ↑u ⊆ p.nodes) :
-    ((Lpofin.guard hx hx' hd (Label.test_ne_bot b)).lin_rec u (φ.and (Form.literal x)) : s → t s) = p.lin_rec u φ := by
+    ((Lpofin.guard hx hx' hd (Label.test_ne_bot b)).lin_rec u (φ.and (Form.literal x)) : s → t s) =
+    p.lin_rec u φ := by
   classical
   induction u using Finset.strongInduction generalizing φ with
   | H u ih =>

@@ -65,7 +65,8 @@ lemma branches_permute {α α' : Lpofin l} {e : α.nodes ≃ α'.nodes}
         · exact extens_subset_nodes _ (hex hx)
         · exact hc (Finset.mem_image.mpr ⟨⟨x, hx⟩, Finset.mem_attach _ _, rfl⟩)
         · simp only [Subtype.coe_eta, Equiv.apply_symm_apply]
-    · intro x hx; simp only [extens, Finset.mem_image, Finset.mem_attach, true_and, Finset.mem_filter] at *
+    · intro x hx
+      simp only [extens, Finset.mem_image, Finset.mem_attach, true_and, Finset.mem_filter] at *
       obtain ⟨y, rfl⟩ := hx; constructor
       · exact (Set.Finite.mem_toFinset _).mpr (Subtype.coe_prop _)
       · intro hc; have := hex y.property
@@ -149,10 +150,38 @@ def branches_equiv {α α' : Lpofin l} {e : α.nodes ≃ α'.nodes}
     · refine h ⟨⟨?_, True.intro⟩, hv⟩; exact (α'.val.property.rel_dom hrel).1
 }
 
+lemma form_imp_permute {l : Type} [Bot l]
+    {a : Lpofin l} {Y : Set Node} {e : a.nodes ≃ Y} {φ : Form Node} {x : Node}
+    (hx : x ∈ a.nodes) (hφ : φ.DependsOn a.nodes) :
+    φ ≤ a.form x ↔ φ.permute e ≤ (a.permute e).form (e ⟨x, hx⟩).val := by
+  classical
+  constructor
+  · intro himp v h
+    apply Lpo.form_inter_nodes_sat_iff.mpr;
+    conv in v ∩ _ => exact (Form.image_inv _ e.symm).symm
+    rw [e.symm_symm]; exact (Lpo.permute_form_sat_iff _).mp (himp _ h)
+  · intro himp v h
+    apply (Lpo.permute_form_sat_iff hx (e := e)).mpr
+    refine himp _ ?_; unfold Form.permute; conv => arg 1; exact Form.image_inv v e
+    refine (hφ _ _ ?_).mp h; apply Set.disjoint_left.mpr fun y hy hy' ↦ ?_
+    rcases Set.mem_symmDiff.mp hy with ⟨hv, hv'⟩ | ⟨hv, hv'⟩
+    · exact hv' ⟨hv, hy'⟩
+    · exact hv' hv.1
+
+lemma branch_depends_on {α : Lpofin l} {φ : Form Node} (h : φ ∈ α.branches) :
+    φ.DependsOn α.nodes := by
+  obtain ⟨s, ⟨hne, hsub, _⟩, rfl⟩ := α.branches_finite.mem_toFinset.mp h
+  refine
+    Form.DependsOn.monotone _ ?_
+      (Form.DependsOn.sAnd
+        fun x ↦ α.val.property.form _ (hsub x.property |> extens_subset_nodes _) |>.1)
+  rintro x ⟨s, ⟨y, rfl⟩, h⟩
+  exact α.val.property.rel_dom h |>.1
+
 lemma seq_isomorphic {α α' β β' : Lpofin l} {f : CopyFn α β} {g : CopyFn α' β'}
     (hα : α ≈ α') (hβ : β ≈ β') : seq α β f ≈ seq α' β' g := by
   have ⟨e, he⟩ := hα
-  have eb := branches_equiv (Subtype.ext he)
+  let eb := branches_equiv (Subtype.ext he)
   have (φ : ↑α.branches) :
       ∃ e : ((f φ).nodes ≃ (g (eb φ)).nodes), (f φ).permute e = (g (eb φ)) := by
     have ⟨ef, hf⟩ := (f.property φ).1
@@ -225,7 +254,34 @@ lemma seq_isomorphic {α α' β β' : Lpofin l} {f : CopyFn α β} {g : CopyFn �
                   · exact Equiv.iUnion_symm_apply' _
                 }
             · refine and_congr ?_ ?_
-              · sorry
+              · rcases hx with hx | hx
+                · conv => lhs; rhs; arg 2; exact Equiv.union_symm_apply_left hx
+                  refine (form_imp_permute (e := e) ?_ ?_).trans ?_
+                  · exact Subtype.coe_prop _
+                  · exact branch_depends_on φ.property
+                  · refine forall_congr' fun v ↦ imp_congr ?_ ?_
+                    · exact Iff.refl _
+                    · conv => lhs; arg 2; arg 1; exact e.apply_symm_apply _
+                      unfold form; conv => rhs; arg 1; exact he.symm
+                      exact Iff.refl _
+                · conv => lhs; rhs; arg 2; exact Equiv.union_symm_apply_right hx
+                  obtain ⟨_, ⟨ψ, rfl⟩, hx⟩ := hx
+                  conv => lhs; rhs; arg 2; exact Equiv.iUnion_symm_apply hx (e := eb)
+                  constructor
+                  · intro himp v h; exfalso
+                    have := (α.val.property.form_dom _).mp ⟨_, himp _ h⟩
+                    refine Set.disjoint_right.mp (f.property (eb.symm ψ)).2.1 ?_ this
+                    exact Subtype.coe_prop _
+                  · intro himp v h; exfalso
+                    refine Set.disjoint_right.mp (g.property ψ).2.1 hx ?_
+                    refine (α'.val.property.form_dom _).mp ⟨Form.image v e, himp _ ?_⟩
+                    simp only [branches_equiv, Equiv.coe_fn_mk, Form.permute, eb]
+                    conv => arg 2; exact Form.image_inv v e
+                    refine (branch_depends_on φ.property _ _ ?_).mp h
+                    apply Set.disjoint_left.mpr fun y hy hy' ↦ ?_
+                    rcases Set.mem_symmDiff.mp hy with ⟨hv, hv'⟩ | ⟨hv, hv'⟩
+                    · exact hv' ⟨hv, hy'⟩
+                    · exact hv' hv.1
               · sorry
         · constructor
           · intro ⟨_, hy', _⟩; exfalso; exact hy hy'
