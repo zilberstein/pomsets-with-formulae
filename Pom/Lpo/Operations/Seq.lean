@@ -40,14 +40,16 @@ noncomputable def seq_base (α β : Lpofin l) (f : CopyFn α β) : Lpo_base l :=
 lemma branch_implies_node {α : Lpofin l} {x : Node} :
     ∀ φ : ↑α.branches, φ ≤ α.form x → x ∈ α.val.nodes := by
   intro φ hle
-  rcases (Set.Finite.mem_toFinset _).mp φ.2 with ⟨S, ⟨hne, hsub, hsat, hstk, hmax⟩, heq⟩
+  have ⟨S, ⟨hne, hsub, hsat, hstk, hmax⟩, heq⟩ := φ.2
   refine (α.val.property.form_dom x).mp ?_
   rcases hsat with ⟨v, hv⟩; use v; exact hle v ((congrFun heq _).mp hv)
 
 lemma seq_nodes_finite {α β : Lpofin l} {f : CopyFn α β} :
     (seq_base α β f).nodes.Finite := by
   refine Set.finite_union.mpr ⟨α.property, ?_⟩
-  refine Set.finite_iUnion ?_; intro φ; exact (f φ).property
+  refine @Set.finite_iUnion _ _ ?_ _ ?_
+  · exact α.branches_finite
+  · intro φ; exact (f φ).property
 
 lemma seq_rel_valid {α β : Lpofin l} {f : CopyFn α β} :
     (seq_base α β f).rel.IsCausalityRel (seq_base α β f).nodes := by
@@ -122,12 +124,11 @@ lemma seq_rel_valid {α β : Lpofin l} {f : CopyFn α β} :
     · apply Set.mem_iUnion.mp at hy; rcases hy with ⟨φ, hy⟩
       right; use φ; right; refine ⟨?_, hy⟩
       intro v hform
-      have ⟨S, ⟨⟨y, hy⟩, hext, ⟨v', hsat⟩, _⟩, hconj⟩ := (Set.Finite.mem_toFinset _).mp φ.property
+      have ⟨S, ⟨⟨y, hy⟩, hext, ⟨v', hsat⟩, _⟩, hconj⟩ := φ.property
       rw [← hconj] at hform; have := hform ⟨_, hy⟩
       by_cases heq : x = y
       · subst heq; exact this
-      · have hy := extens_subset_nodes _ (hext hy)
-        exact (α.val.property.form _ hx).2 _ (hroot _ hy heq) _ this
+      · exact (α.val.property.form _ hx).2 _ (hroot _ (hext hy).1 heq) _ this
 
 lemma seq_valid (α β : Lpofin l) (f : CopyFn α β) :
     IsValidLpo (seq_base α β f) := by
@@ -171,7 +172,7 @@ lemma seq_valid (α β : Lpofin l) (f : CopyFn α β) :
         exact Exists.choose_spec (p := fun ψ ↦ x ∈ (f ψ).nodes) _
     · have hx' := branch_implies_node φ hx
       simp only [seq_base, nodes] at hlab
-      rcases (Set.Finite.mem_toFinset _).mp φ.2 with ⟨S, ⟨_, _, ⟨v, hv⟩, hstk, _⟩, heq⟩
+      have ⟨S, ⟨_, _, ⟨v, hv⟩, hstk, _⟩, heq⟩ := φ.2
       rw [← heq] at hx; have hform := hx v hv
       have : ¬ (∃ φ, x ∈ (f φ).nodes) := by
         intro ⟨ψ, hx⟩; exact Set.disjoint_left.mp (f.property ψ).2.1 hx' hx
@@ -193,7 +194,7 @@ lemma seq_valid (α β : Lpofin l) (f : CopyFn α β) :
           Set.disjoint_right.mp (f.2 ⟨φ, hφ⟩).2.1 hx
         simp only [hx', ↓reduceIte]
         obtain ⟨v, hv⟩ := ((f ⟨φ, hφ⟩).val.property.form_dom x).mpr hx
-        have ⟨s, ⟨_, hs, ⟨v', hsat⟩, _⟩, heq⟩ := (Set.Finite.mem_toFinset _).mp hφ
+        have ⟨s, ⟨_, hs, ⟨v', hsat⟩, _⟩, heq⟩ := hφ
         refine ⟨(v ∩ (f ⟨φ, hφ⟩).nodes) ∪ (v' ∩ α.nodes), ⟨φ, hφ⟩, ?_, ?_⟩
         · refine (((f ⟨φ, hφ⟩).val.property.form _ hx).1 _ _ ?_).mp hv
           refine Set.disjoint_left.mpr ?_; intro y hy hrel
@@ -204,7 +205,7 @@ lemma seq_valid (α β : Lpofin l) (f : CopyFn α β) :
           · exact hy' hy
           · exact Set.disjoint_right.mp (f.property _).2.1 ((f _).val.property.rel_dom hrel).1 ha
         · subst heq; simp only; intro y
-          have hy' := extens_subset_nodes _ (hs y.property)
+          have hy' := (hs y.property).1
           refine ((α.val.property.form _ hy').1 _ _ ?_).mp (hsat y)
           refine Set.disjoint_left.mpr ?_; intro z hz hrel
           rcases Set.mem_symmDiff.mp hz with ⟨hzv', hz⟩ | ⟨⟨hzv, hz⟩ | h, hzv'⟩
@@ -253,14 +254,14 @@ lemma seq_valid (α β : Lpofin l) (f : CopyFn α β) :
         · right; use φ; right; exact ⟨hform, hx⟩
       · refine Form.DependsOn.and ?_ ?_
         · exact ((f φ).val.property.form  _ hx).1
-        · have ⟨s, ⟨_, hs, ⟨v, hsat⟩, _⟩, heq⟩ := (Set.Finite.mem_toFinset _).mp φ.property
+        · have ⟨s, ⟨_, hs, ⟨v, hsat⟩, _⟩, heq⟩ := φ.property
           rw [← heq]
           refine Form.DependsOn.monotone _
             (?_ : (⋃ z : ↑s, { y | α.form z ≤ α.form y }) ⊆ _)
             ?_
           · intro y; simp only [Set.mem_iUnion]; intro ⟨z, hform⟩ v h; exact hform v (h z)
           · refine Form.DependsOn.sAnd fun z ↦ ?_
-            have hz := extens_subset_nodes _ (hs z.property)
+            have hz := (hs z.property).1
             refine (α.val.property.form _ hz).1.monotone _ ?_
             intro y hrel; have hy := (α.val.property.rel_dom hrel).1
             exact (α.val.property.form _ hy).2 _ hrel
@@ -281,7 +282,7 @@ lemma seq_valid (α β : Lpofin l) (f : CopyFn α β) :
         exact ((f φ).val.property.form _ hx).2 _ hrel _ hform
       · exfalso; simp only [Set.mem_iUnion] at hx
         have ⟨ψ, hx⟩ := hx; refine Set.disjoint_right.mp (f.property ψ).2.1 hx ?_
-        have ⟨s, ⟨_, _, ⟨v, hsat⟩, _⟩, heq⟩ := (Set.Finite.mem_toFinset _).mp φ.property
+        have ⟨s, ⟨_, _, ⟨v, hsat⟩, _⟩, heq⟩ := φ.property
         rw [← heq] at hform; exact (α.val.property.form_dom _).mp ⟨_, hform _ hsat⟩
 
 noncomputable def seq (α β : Lpofin l) (f : CopyFn α β) : Lpofin l := {
@@ -322,7 +323,7 @@ lemma seq_monotone {α α' β β' : Lpofin l} {f : CopyFn α β} {g : CopyFn α'
           · right; refine Set.mem_iUnion.mpr ⟨φ, ?_⟩;
             exact (hext φ).downcl x hx y hyx
           · left
-            have ⟨s, ⟨_, _, ⟨v, hsat⟩, hstk, _⟩, heq⟩ := (Set.Finite.mem_toFinset _).mp φ.property
+            have ⟨s, ⟨_, _, ⟨v, hsat⟩, hstk, _⟩, heq⟩ := φ.property
             have hy' : y ∈ α'.nodes := by
               refine (α'.val.property.form_dom _).mp ?_
               rw [← heq] at hy; exact ⟨v, hy _ hsat⟩
@@ -348,7 +349,7 @@ lemma seq_monotone {α α' β β' : Lpofin l} {f : CopyFn α β} {g : CopyFn α'
         · right; refine ⟨?_, (hext _).nodes hy'⟩
           refine le_of_le_of_eq hform (hle₁.form _ ?_)
           refine (α.val.property.form_dom _).mp ?_
-          have ⟨s, ⟨_, _, ⟨v, hsat⟩, _⟩, heq⟩ := (Set.Finite.mem_toFinset _).mp φ.property
+          have ⟨s, ⟨_, _, ⟨v, hsat⟩, _⟩, heq⟩ := φ.property
           rw [← heq] at hform; exact ⟨v, hform _ hsat⟩
     · simp only [Lpo.nodes, seq, seq_base, nodes, Set.mem_union, Set.mem_iUnion, Lpo.rel] at *
       obtain (hx | ⟨φ, hx⟩) := hx <;>
@@ -391,7 +392,7 @@ lemma seq_monotone {α α' β β' : Lpofin l} {f : CopyFn α β} {g : CopyFn α'
           rw [this]; exact hrel
       · exfalso; refine Set.disjoint_left.mp (g.property _).2.1 ?_ ((hext _).nodes hx)
         refine (α'.val.property.form_dom _).mp ?_
-        have ⟨s, ⟨_, _, ⟨v, hsat⟩, _⟩, heq⟩ := (Set.Finite.mem_toFinset _).mp φ'.property
+        have ⟨s, ⟨_, _, ⟨v, hsat⟩, _⟩, heq⟩ := φ'.property
         rw [← heq] at hform; exact ⟨v, hform _ hsat⟩
   · intro x; by_cases hx : x ∈ (α.seq β f).nodes
     · rcases hx with hx | hx
@@ -463,11 +464,10 @@ lemma seq_monotone {α α' β β' : Lpofin l} {f : CopyFn α β} {g : CopyFn α'
               exact Set.disjoint_right.mp ((f.property _).2.2 _ heq) hz.1
           exact this
       · right
-        have ⟨s, ⟨hne, hs, ⟨v, hsat⟩, hstk, hmax⟩, heq⟩ := (Set.Finite.mem_toFinset _).mp φ.property
-        have hφ' := (Set.Finite.mem_toFinset _).mpr.mt hφ
-        rw [le_branches_set hle₁] at hφ'
-        have h := (Set.Finite.mem_toFinset _).mp φ.property
-        have ⟨v', hform⟩ := not_forall.mp ((Set.mem_inter h).mt hφ')
+        have ⟨s, ⟨hne, hs, ⟨v, hsat⟩, hstk, hmax⟩, heq⟩ := φ.property
+        rw [le_branches hle₁] at hφ
+        have h := φ.property
+        have ⟨v', hform⟩ := not_forall.mp ((Set.mem_inter h).mt hφ)
         have ⟨hv, hform⟩ := Classical.not_imp.mp hform
         have ⟨⟨z, hz⟩, hform⟩ := not_not.mp hform
         by_cases hz' : z ∈ s
@@ -478,16 +478,15 @@ lemma seq_monotone {α α' β β' : Lpofin l} {f : CopyFn α β} {g : CopyFn α'
         · exfalso; rw [← heq] at hv; refine hstk _ hv ?_
           have : z ∉ α'.extens := by
             intro hc
-            refine hmax (insert z s) (Finset.ssubset_insert hz') ?_ ?_
-            · intro y hy; rcases Finset.mem_insert.mp hy with rfl | hy
+            refine hmax (insert z s) (Set.ssubset_insert hz') ?_ ?_
+            · intro y hy; rcases Set.mem_insert_iff.mp hy with rfl | hy
               · exact hc
               · exact hs hy
-            · use v'; intro y hy; rcases Finset.mem_insert.mp hy with rfl | hy
+            · use v'; intro y hy; rcases Set.mem_insert_iff.mp hy with rfl | hy
               · exact (congrFun (hle₁.form _ hz.1) _).mp hform
               · exact hv ⟨_, hy⟩
-          have := Finset.mem_filter.mpr.mt this; simp only [not_and, Decidable.not_not] at this
-          have := this ((Set.Finite.mem_toFinset _).mpr (hle₁.nodes hz.1))
+          have := not_and.mp this; rw [Decidable.not_not] at this
+          have := this (hle₁.nodes hz.1)
           exact this _ ((congrFun (hle₁.form _ hz.1) _).mp hform)
-
 
 end Lpofin

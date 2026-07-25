@@ -7,21 +7,18 @@ variable {l : Type} [PartialOrder l] [OrderBot l]
 lemma branches_permute {α α' : Lpofin l} {e : α.nodes ≃ α'.nodes}
     (h : α.permute e = α') :
     ∀ φ ∈ α.branches, φ.permute e ∈ α'.branches := by
-  intro φ hφ
-  obtain ⟨s, ⟨hne, hsub, ⟨v, hsat⟩, hstk, hmax⟩, rfl⟩ := (Set.Finite.mem_toFinset _).mp hφ
-  let t := s.attach.image
-    (fun x : ↑s ↦ (e ⟨x.val, extens_subset_nodes _ (hsub x.property)⟩).val)
-  refine (Set.Finite.mem_toFinset _).mpr ⟨t, ⟨?_, ?_, ?_, ?_, ?_⟩, ?_⟩ <;> subst t
-  · refine Finset.Nonempty.image (Finset.univ_nonempty_iff.mpr ?_) _
-    exact hne.coe_sort
+  rintro φ ⟨s, ⟨hne, hsub, ⟨v, hsat⟩, hstk, hmax⟩, rfl⟩
+  let t := Set.range
+    (fun x : ↑s ↦ (e ⟨x.val, (hsub x.property).1⟩).val)
+  refine ⟨t, ⟨?_, ?_, ?_, ?_, ?_⟩, ?_⟩ <;> subst t
+  · exact @Set.range_nonempty _ _ hne.coe_sort _
   · conv => rhs; rw [← h]
-    intro x hx; obtain ⟨⟨y, hy⟩, _, rfl⟩ := Finset.mem_image.mp hx
-    simp only [extens, Finset.mem_filter]; constructor
-    · refine (Set.Finite.mem_toFinset _).mpr ?_; exact Subtype.coe_prop _
+    intro x hx; obtain ⟨⟨y, hy⟩, _, rfl⟩ := hx
+    constructor
+    · exact Subtype.coe_prop _
     · intro hc
-      have := hsub hy
-      simp only [extens, Finset.mem_filter] at this; have ⟨hy', h'⟩ := this; apply h'
-      have hy' := (Set.Finite.mem_toFinset _).mp hy'; intro v hform
+      have ⟨hy', h'⟩ := hsub hy; apply h'
+      intro v hform
       have ⟨⟨z, hz, hbot⟩, _, hform'⟩ :=
         hc (Form.image v e) ((Lpo.permute_form_sat_iff hy').mp hform)
       refine ⟨⟨(e.symm ⟨_, hz⟩).val, Subtype.coe_prop _, ?_⟩, ?_⟩
@@ -29,19 +26,19 @@ lemma branches_permute {α α' : Lpofin l} {e : α.nodes ≃ α'.nodes}
       · refine (Lpo.permute_form_sat_iff (Subtype.coe_prop _) (e := e)).mpr ?_
         conv => arg 2; arg 1; exact e.apply_symm_apply _
         exact ⟨hz, hform'⟩
-  · use Form.image v e; intro ⟨x, hx⟩; obtain ⟨⟨y, hy⟩, _, rfl⟩ := Finset.mem_image.mp hx
+  · use Form.image v e; rintro ⟨x, ⟨⟨y, hy⟩, _, rfl⟩⟩
     conv => simp only; arg 1; exact h.symm
     refine (Lpo.permute_form_sat_iff _).mp (hsat ⟨_, hy⟩)
   · intro v hv ⟨⟨z, hz, hbot⟩, hform⟩
     refine hstk (Form.image v e.symm) ?_ ?_
     · intro ⟨x, hx⟩; refine ((Lpo.permute_form_sat_iff ?_ (e := e)).mpr ?_)
-      · exact extens_subset_nodes _ (hsub hx)
+      · exact (hsub hx).1
       · conv => arg 3; arg 2; exact e.symm_symm.symm
         conv => arg 3; exact Form.image_inv v e.symm
         refine Lpo.form_inter_nodes_sat_iff.mp ?_
         conv at hv => arg 1; exact h.symm
         refine hv ⟨(e ⟨x, _⟩).val, ?_⟩
-        exact Finset.mem_image.mpr ⟨⟨x, hx⟩, Finset.mem_attach _ _, rfl⟩
+        refine Set.mem_range.mpr ⟨⟨x, hx⟩, rfl⟩
     · refine ⟨⟨(e.symm ⟨z, hz⟩).val, Subtype.coe_prop _, ?_⟩, ?_⟩
       · rw [← h] at hbot; simp only [Lpo.lab, permute, Lpo.permute, dite_eq_right_iff] at hbot
         exact hbot hz
@@ -53,25 +50,21 @@ lemma branches_permute {α α' : Lpofin l} {e : α.nodes ≃ α'.nodes}
         conv at hform => simp only; arg 1; exact h.symm
         exact hform
   · intro t ⟨hst, hnts⟩ hex ⟨v, hform⟩
-    refine hmax (t.attach.image fun y ↦ (e.symm ⟨y.val, ?_⟩).val) ?_ ?_ ?_
-    · exact extens_subset_nodes _ (hex y.property)
+    refine hmax (Set.range fun y : ↑t ↦ (e.symm ⟨y.val, ?_⟩).val) ?_ ?_ ?_
+    · exact (hex y.property).1
     · constructor
-      · intro x hx; refine Finset.mem_image.mpr ⟨⟨e ⟨x, ?_⟩, ?_⟩, Finset.mem_attach _ _, ?_⟩
-        · exact extens_subset_nodes _ (hsub hx)
-        · exact hst (Finset.mem_image.mpr ⟨⟨x, hx⟩, Finset.mem_attach _ _, rfl⟩)
+      · intro x hx; refine Set.mem_range.mpr ⟨⟨e ⟨x, ?_⟩, ?_⟩, ?_⟩
+        · exact (hsub hx).1
+        · exact hst ⟨⟨x, hx⟩, rfl⟩
         · simp only [Subtype.coe_eta, Equiv.symm_apply_apply]
       · intro hc; apply hnts; intro x hx
-        refine Finset.mem_image.mpr ⟨⟨(e.symm ⟨x, ?_⟩).val, ?_⟩, Finset.mem_attach _ _, ?_⟩
-        · exact extens_subset_nodes _ (hex hx)
-        · exact hc (Finset.mem_image.mpr ⟨⟨x, hx⟩, Finset.mem_attach _ _, rfl⟩)
+        refine ⟨⟨(e.symm ⟨x, ?_⟩).val, ?_⟩, ?_⟩
+        · exact (hex hx).1
+        · exact hc ⟨⟨x, hx⟩, rfl⟩
         · simp only [Subtype.coe_eta, Equiv.apply_symm_apply]
-    · intro x hx
-      simp only [extens, Finset.mem_image, Finset.mem_attach, true_and, Finset.mem_filter] at *
-      obtain ⟨y, rfl⟩ := hx; constructor
-      · exact (Set.Finite.mem_toFinset _).mpr (Subtype.coe_prop _)
-      · intro hc; have := hex y.property
-        simp only [extens, nodes_finset, Finset.mem_filter, Set.Finite.mem_toFinset] at this
-        apply this.2; intro v hform
+    · rintro x ⟨y, rfl⟩; constructor
+      · exact Subtype.coe_prop _
+      · intro hc; apply (hex y.property).2; intro v hform
         rw [← h] at hform; simp only [Lpofin.permute, form, Lpo.permute, Lpo.form] at hform
         have ⟨hy, hform⟩ := hform
         have ⟨⟨z, hz, hbot⟩, hform⟩ := hc _ hform
@@ -86,8 +79,7 @@ lemma branches_permute {α α' : Lpofin l} {e : α.nodes ≃ α'.nodes}
           conv => arg 3; exact (Form.image_inv _ e.symm).symm
           conv => arg 3; arg 2; exact e.symm_symm
           exact (Lpo.permute_form_sat_iff _).mp hform
-    · refine ⟨Form.image v e.symm, ?_⟩; intro x hx
-      obtain ⟨y, _, rfl⟩ := Finset.mem_image.mp hx
+    · refine ⟨Form.image v e.symm, ?_⟩; rintro x ⟨y, _, rfl⟩
       refine (Lpo.permute_form_sat_iff (Subtype.coe_prop _) (e := e)).mpr ?_
       conv => arg 2; simp only [Subtype.coe_eta]; arg 1; exact e.apply_symm_apply _
       conv => arg 3; exact Form.image_inv _ _
@@ -97,20 +89,16 @@ lemma branches_permute {α α' : Lpofin l} {e : α.nodes ≃ α'.nodes}
     simp only [conj]; unfold Form.permute; ext v; constructor
     · intro hform x
       have :=
-        hform
-          ⟨(e ⟨x.val, extens_subset_nodes _ (hsub x.property)⟩).val,
-            Finset.mem_image.mpr ⟨x, Finset.mem_attach _ _, rfl⟩⟩
+        hform ⟨(e ⟨x.val, (hsub x.property).1⟩).val, ⟨x, rfl⟩⟩
       simp only [form, Lpo.form, permute, Lpo.permute, Form.permute, Subtype.coe_eta,
         Subtype.coe_prop, exists_const] at this
       conv at this => arg 2; arg 1; exact Equiv.symm_apply_apply _ _
       exact this
-    · intro hform x
-      have ⟨y, _, heq⟩ := Finset.mem_image.mp x.property; rw [← heq]
-      have := hform y
-      simp only [form, Lpo.form, permute, Lpo.permute, Form.permute, Subtype.coe_eta,
-        Subtype.coe_prop, exists_const]
-      conv => arg 2; arg 1; exact Equiv.symm_apply_apply _ _
-      exact this
+    · intro hform x; have ⟨y, heq⟩ := x.property; rw [← heq]
+      refine ⟨Subtype.coe_prop _, ?_⟩
+      simp only [Subtype.coe_eta]
+      conv => arg 1; arg 2; arg 1; exact Equiv.symm_apply_apply _ _
+      exact hform y
 
 def branches_equiv {α α' : Lpofin l} {e : α.nodes ≃ α'.nodes}
     (h : α.permute e = α') :
@@ -123,32 +111,30 @@ def branches_equiv {α α' : Lpofin l} {e : α.nodes ≃ α'.nodes}
     rfl
   }⟩
   left_inv := by
-    intro ⟨φ, hφ⟩
-    unfold Form.permute; ext1; ext1 v; simp only [Equiv.symm_symm, Form.image]
-    obtain ⟨s, ⟨_, hsub, _⟩, rfl⟩:= (Set.Finite.mem_toFinset _).mp hφ
-    have h (x : ↑s) := (α.val.property.form _ (extens_subset_nodes _ (hsub x.property))).1
-    refine Form.DependsOn.sAnd h _ _ ?_
+    rintro ⟨φ, ⟨s, ⟨_, hsub, _⟩, rfl⟩⟩
+    have h (x : ↑s) := (α.val.property.form _ (hsub x.property).1).1
+    ext1; ext1 v; refine Form.DependsOn.sAnd h _ _ ?_
     refine Set.disjoint_left.mpr ?_; intro x hx hx'
     have ⟨y, hrel⟩ := Set.mem_iUnion.mp hx'
     rcases Set.mem_symmDiff.mp hx with ⟨⟨z, rfl, w, heq, hw⟩, hv⟩ | ⟨hv, h⟩
-    · apply hv; rw [← Subtype.val_injective heq]; simpa only [Equiv.symm_apply_apply]
+    · apply hv; rw [← Subtype.val_injective heq]
+      simpa only [Equiv.symm_symm, Equiv.symm_apply_apply]
     · have hx := (α.val.property.rel_dom hrel).1
       refine h ⟨e ⟨x, hx⟩, ?_, ⟨x, hx⟩, rfl, hv⟩
       simp only [Equiv.symm_apply_apply]
   right_inv := by
-    intro ⟨φ, hφ⟩
-    unfold Form.permute; ext1; ext1 v; simp only [Form.image, Equiv.symm_symm, Subtype.exists,
-      exists_and_right, Set.mem_setOf_eq, ↓existsAndEq, Subtype.coe_eta, Equiv.apply_symm_apply,
-      Subtype.coe_prop, exists_const, true_and, exists_prop]
-    obtain ⟨s, ⟨_, hsub, _⟩, rfl⟩:= (Set.Finite.mem_toFinset _).mp hφ
-    have h (x : ↑s) := (α'.val.property.form _ (extens_subset_nodes _ (hsub x.property))).1
+    rintro ⟨φ, ⟨s, ⟨_, hsub, _⟩, rfl⟩⟩
+    ext1; ext1 v
+    have h (x : ↑s) := (α'.val.property.form _ (hsub x.property).1).1
     refine Form.DependsOn.sAnd h _ _ ?_
     refine Set.disjoint_left.mpr ?_; intro x hx hx'
     have ⟨y, hrel⟩ := Set.mem_iUnion.mp hx'
-    rcases Set.mem_symmDiff.mp hx with ⟨⟨_, h⟩, h'⟩ | ⟨hv, h⟩
-    · exact h' h
-    · refine h ⟨⟨?_, True.intro⟩, hv⟩; exact (α'.val.property.rel_dom hrel).1
-}
+    rcases Set.mem_symmDiff.mp hx with ⟨⟨z, rfl, y, heq, h⟩, h'⟩ | ⟨hv, h⟩
+    · apply h'; rw [e.symm_symm, ← Subtype.ext heq, e.apply_symm_apply]; exact h
+    · apply h; have hx := (α'.val.property.rel_dom hrel).1
+      refine ⟨e.symm ⟨x, hx⟩, ?_, ?_⟩
+      · rw [e.symm_symm, e.apply_symm_apply]
+      · refine ⟨⟨_, hx⟩, rfl, hv⟩}
 
 lemma form_imp_permute {l : Type} [Bot l]
     {a : Lpofin l} {Y : Set Node} {e : a.nodes ≃ Y} {φ : Form Node} {x : Node}
@@ -170,11 +156,11 @@ lemma form_imp_permute {l : Type} [Bot l]
 
 lemma branch_depends_on {α : Lpofin l} {φ : Form Node} (h : φ ∈ α.branches) :
     φ.DependsOn α.nodes := by
-  obtain ⟨s, ⟨hne, hsub, _⟩, rfl⟩ := α.branches_finite.mem_toFinset.mp h
+  obtain ⟨s, ⟨hne, hsub, _⟩, rfl⟩ := h
   refine
     Form.DependsOn.monotone _ ?_
       (Form.DependsOn.sAnd
-        fun x ↦ α.val.property.form _ (hsub x.property |> extens_subset_nodes _) |>.1)
+        fun x ↦ α.val.property.form _ (hsub x.property |>.1) |>.1)
   rintro x ⟨s, ⟨y, rfl⟩, h⟩
   exact α.val.property.rel_dom h |>.1
 
