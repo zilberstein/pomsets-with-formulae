@@ -69,7 +69,47 @@ def branches (α : Lpofin (Label act test)) : Set (Form Node) :=
   }
 
 lemma branches_finite (α : Lpofin (Label act test)) : α.branches.Finite := by
-  sorry
+  have htests : α.tests.Finite := α.property.subset (by
+    intro x hx
+    have hn : α.lab x ≠ ⊥ := by
+      have ⟨b, hb⟩ := (Label.isTest_iff _).mp hx
+      rw [hb]
+      exact Label.test_ne_bot b
+    exact not_not.mp ((α.val.property.lab_dom x).mt hn))
+  let T : Set (Set Node) := {t | t ⊆ α.tests}
+  have hT : T.Finite := htests.finite_subsets
+  let X := Σ t : ↑T, (↑(t.val) → Bool)
+  letI : Fintype ↑T := hT.fintype
+  letI : ∀ t : ↑T, Fintype ↑(t.val) := fun t => (htests.subset t.property).fintype
+  haveI : Fintype X := inferInstance
+  refine (Set.finite_range (fun p : X => mk_form p.2)).subset ?_
+  rintro φ ⟨t, ht, f, rfl, _⟩
+  exact ⟨⟨⟨t, ht⟩, f⟩, rfl⟩
+
+lemma isTest_of_le_or_bot [PartialOrder act] [PartialOrder test]
+    {α β : Lpofin (Label act test)} (hle : α ≤ β) {x : Node}
+    (ht : β.isTest x) : α.isTest x ∨ α.lab x = ⊥ := by
+  have hlab := hle.lab x
+  obtain ⟨b, hb⟩ := (Label.isTest_iff _).mp ht
+  change α.lab x ≤ β.lab x at hlab
+  rw [hb] at hlab
+  cases ha : α.lab x with
+  | bot => exact Or.inr rfl
+  | fork => rw [ha] at hlab; contradiction
+  | act a => rw [ha] at hlab; contradiction
+  | test c => exact Or.inl ((Label.isTest_iff _).mpr ⟨c, ha⟩)
+
+lemma mk_form_insert_restrict {t : Set Node} {x : Node} {f : ↑t → Bool} {b : Bool}
+    {v : Set Node} (hx : x ∉ t)
+    (h : mk_form (fun ⟨z, hz⟩ ↦ if heq : z = x then b
+      else f ⟨z, Set.mem_of_mem_insert_of_ne hz heq⟩) v) :
+    mk_form f v := by
+  intro z
+  have hz := h ⟨z.val, Set.mem_insert_of_mem x z.property⟩
+  simp only [node_lit] at hz ⊢
+  split at hz <;> rename_i heq
+  · exact (hx (heq ▸ z.property)).elim
+  · simpa using hz
 
 lemma branches_monotone [PartialOrder act] [PartialOrder test] :
     @Monotone (Lpofin (Label act test)) _ _ _ branches := by
@@ -84,10 +124,32 @@ lemma branches_monotone [PartialOrder act] [PartialOrder test] :
     · intro v hv x; exact le_form hle v (himp _ hv x)
     · intro v hf h; apply hstk v hf
       exact stuck_antitone hle _ h
-  · sorry
+  · intro x b hx htest hreach
+    obtain ⟨⟨w, hwform⟩, hwconj, hwstuck⟩ := hreach
+    have hxnode : x ∈ β.nodes := tests_sub_nodes htest
+    rcases hle.succ x hxnode with hxα | ⟨y, hybot, hyx⟩
+    · rcases isTest_of_le_or_bot hle htest with htestα | hbot
+      · apply hmax hx htestα
+        refine ⟨⟨w, hwform⟩, ?_, ?_⟩
+        · intro v hf z
+          refine (congrFun (hle.form z ?_) _).mpr (hwconj _ hf z)
+          rcases z.property with hz | hz
+          · simpa [hz] using hxα
+          · exact tests_sub_nodes (ht hz)
+        · intro u hu hs
+          exact hstk u (mk_form_insert_restrict hx hu) hs
+      · apply hstk w (mk_form_insert_restrict hx hwform)
+        refine ⟨⟨x, hxα, hbot⟩, ?_⟩
+        refine (congrFun (hle.form x hxα) w).mpr ?_
+        exact hwconj _ hwform ⟨x, Set.mem_insert x t⟩
+    · apply hstk w (mk_form_insert_restrict hx hwform)
+      refine ⟨⟨y, hybot⟩, ?_⟩
+      refine (congrFun (hle.form y hybot.1) w).mpr ?_
+      exact (β.val.property.form y (hle.nodes hybot.1)).2 x hyx w
+        (hwconj _ hwform ⟨x, Set.mem_insert x t⟩)
 
-lemma le_branches [PartialOrder act] [PartialOrder test] {α β : Lpofin (Label act test)} (hle : α ≤ β) :
-    α.branches = { φ ∈ β.branches | φ ≤ α.stuck.not } := by
+lemma le_branches [PartialOrder act] [PartialOrder test] {α β : Lpofin (Label act test)}
+    (hle : α ≤ β) : α.branches = { φ ∈ β.branches | φ ≤ α.stuck.not } := by
   ext φ; constructor
   · intro h; constructor
     · exact branches_monotone hle h
@@ -104,10 +166,25 @@ lemma le_branches [PartialOrder act] [PartialOrder test] {α β : Lpofin (Label 
         refine (β.val.property.form y (hle.nodes hbot.1)).2 _ hyx v ?_
         exact himp _ hsat ⟨_, hxt⟩
     refine ⟨t, ?_, f, rfl, ⟨⟨v, hsat⟩, ?_, hstuck⟩, ?_⟩
-    · intro x hx; sorry
-    · intro v hform x; have hx := hsub x.property
-      exact (congrFun (hle.form _ hx) _).mpr (himp _ hform x)
-    · intro x b hx htst; sorry
+    · intro x hx; rcases isTest_of_le_or_bot hle (ht hx) with htest | hbot
+      · exact htest
+      · exfalso
+        exact (hstuck v hsat) ⟨⟨x, hsub hx, hbot⟩,
+          (congrFun (hle.form x (hsub hx)) v).mpr (himp _ hsat ⟨x, hx⟩)⟩
+    · intro v hform x
+      exact (congrFun (hle.form x (hsub x.property)) _).mpr (himp _ hform x)
+    · intro x b hx htst hreach
+      apply hmax hx
+      · have ⟨c, hc⟩ := (Label.isTest_iff _).mp htst
+        apply (Label.isTest_iff _).mpr
+        obtain ⟨d, hd, _⟩ := lab_is_test_le (le_of_eq_of_le hc.symm (hle.lab x))
+        exact ⟨d, hd⟩
+      · obtain ⟨⟨w, hwform⟩, hwconj, hwstk⟩ := hreach
+        refine ⟨⟨w, hwform⟩, ?_, ?_⟩
+        · intro v hform z
+          exact le_form hle _ (hwconj _ hform z)
+        · intro u hu hs
+          exact hwstk u hu (stuck_antitone hle u hs)
 
 lemma branches_not_mutually_sat {α : Lpofin (Label act test)} {φ ψ : Form Node}
     (hφ : φ ∈ α.branches) (hψ : ψ ∈ α.branches) (hneq : φ ≠ ψ) :
