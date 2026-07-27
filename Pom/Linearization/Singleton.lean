@@ -47,9 +47,9 @@ lemma singleton_filter {l : Type} [Bot l] (x : Node) (ℓ : l) (r : Bool) :
 lemma lin_rec_eq_empty {t : Type → Type} {s act test : Type}
     [Linearizable t s] [Bot (t s)]
     [Sem act s (t s)] [Sem test s (t Bool)]
-    (α : Lpofin (Label act test)) {u : Finset Node}
+    (α : Lpofin (Label act test)) {u : Finset Node} {φ : Form Node}
     (h : u = ∅) :
-    (α.lin_rec u : s → t s) = pure := by
+    (α.lin_rec u φ : s → t s) = pure := by
   ext σ; unfold lin_rec; refine if_pos h
 
 theorem lin_singleton {t : Type → Type} {s act test : Type}
@@ -62,7 +62,10 @@ theorem lin_singleton {t : Type → Type} {s act test : Type}
   refine (if_neg ?_).trans ?_
   · refine Finset.ne_empty_of_mem (a := x) ?_
     exact (Set.Finite.mem_toFinset _).mpr (Set.mem_singleton _)
-  · conv => lhs; exact Nondet.finset_singleton x (singleton_next x ℓ)
+  · refine (Nondet.finset_singleton (α := t s) x (singleton_next x ℓ)).trans ?_
+    classical
+    conv => lhs; arg 1; rhs; exact if_pos rfl
+    refine (if_pos (le_refl Form.true)).trans ?_
     simp only [lin_node, Label.eval]
     have hℓ : (singleton x ℓ).lab x = ℓ := if_pos rfl; rw [hℓ]
     cases ℓ with
@@ -80,7 +83,6 @@ theorem lin_singleton {t : Type → Type} {s act test : Type}
       exact singleton_filter _ _ _
 
 end Lpofin
-
 
 namespace Pom
 
