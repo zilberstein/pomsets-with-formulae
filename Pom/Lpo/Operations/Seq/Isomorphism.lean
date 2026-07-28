@@ -7,7 +7,7 @@ variable {act test : Type} [PartialOrder act] [PartialOrder test]
 lemma branches_permute {α α' : Lpofin (Label act test)} {e : α.nodes ≃ α'.nodes}
     (h : α.permute e = α') :
     ∀ φ ∈ α.branches, φ.permute e ∈ α'.branches := by
-  rintro _ ⟨s, hs, f, rfl, ⟨⟨v, hsat⟩, himp, hstk⟩, hmax⟩
+  rintro _ ⟨s, hs, f, rfl, ⟨himp, hstk⟩, hmax⟩
   have hinj :
       Function.Injective fun x : ↑s ↦ (e ⟨x.val, tests_sub_nodes (hs x.property)⟩).val := by
     apply Subtype.val_injective.comp; apply e.injective.comp
@@ -29,9 +29,7 @@ lemma branches_permute {α α' : Lpofin (Label act test)} {e : α.nodes ≃ α'.
         sorry
       · sorry
     · sorry
-  · refine ⟨?_, ?_, ?_⟩
-    · use Form.image v e; intro y
-      have := hsat (eb.symm y); sorry
+  · refine ⟨?_, ?_⟩
     · intro v hform y; sorry
     · sorry
   · sorry

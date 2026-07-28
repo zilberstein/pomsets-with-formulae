@@ -19,15 +19,17 @@ end Label
 namespace Lpofin
 
 lemma singleton_next {l : Type} [Bot l] (x : Node) (ℓ : l) :
-    next (singleton x ℓ) (singleton x ℓ).nodes_finset = {x} := by
+    next (singleton x ℓ) (singleton x ℓ).nodes_finset Form.true = {x} := by
   classical
   ext y; constructor
-  · intro h; have ⟨hy, _, _⟩ := Finset.mem_filter.mp h
+  · intro h; have ⟨hy, _⟩ := Finset.mem_filter.mp h
     obtain rfl := (Set.Finite.mem_toFinset _).mp hy
     exact Finset.mem_singleton_self _
   · intro hy; obtain rfl := Finset.mem_singleton.mp hy
-    refine Finset.mem_filter.mpr ⟨?_, ?_, ?_⟩ <;>
+    refine Finset.mem_filter.mpr ⟨?_, ?_, ?_, ?_⟩ <;>
       try (apply (Set.Finite.mem_toFinset _).mpr; exact Set.mem_singleton _)
+    · intro _ _; conv => exact congrFun (if_pos rfl) _
+      trivial
     · rintro _ ⟨⟩
 
 lemma singleton_erase {l : Type} [Bot l] (x : Node) (ℓ : l) :
@@ -50,7 +52,11 @@ lemma lin_rec_eq_empty {t : Type → Type} {s act test : Type}
     (α : Lpofin (Label act test)) {u : Finset Node} {φ : Form Node}
     (h : u = ∅) :
     (α.lin_rec u φ : s → t s) = pure := by
-  ext σ; unfold lin_rec; refine if_pos h
+  ext σ; unfold lin_rec; subst h; apply if_pos
+  apply Finset.eq_empty_iff_forall_notMem.mpr
+  classical
+  intro x hx; have ⟨_, hx, _⟩ := Finset.mem_filter.mp hx
+  exact Finset.notMem_empty _ hx
 
 theorem lin_singleton {t : Type → Type} {s act test : Type}
     [Linearizable t s] [Bot (t s)]
@@ -60,12 +66,9 @@ theorem lin_singleton {t : Type → Type} {s act test : Type}
   ext σ; unfold lin lin_rec
   -- First iteration, node x gets evaluated
   refine (if_neg ?_).trans ?_
-  · refine Finset.ne_empty_of_mem (a := x) ?_
-    exact (Set.Finite.mem_toFinset _).mpr (Set.mem_singleton _)
+  · rw [singleton_next x ℓ]; exact Finset.singleton_ne_empty _
   · refine (Nondet.finset_singleton (α := t s) x (singleton_next x ℓ)).trans ?_
     classical
-    conv => lhs; arg 1; rhs; exact if_pos rfl
-    refine (if_pos (le_refl Form.true)).trans ?_
     simp only [lin_node, Label.eval]
     have hℓ : (singleton x ℓ).lab x = ℓ := if_pos rfl; rw [hℓ]
     cases ℓ with

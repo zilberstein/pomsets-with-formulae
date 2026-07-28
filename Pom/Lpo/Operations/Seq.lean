@@ -43,7 +43,8 @@ omit [PartialOrder act] [PartialOrder test] in
 lemma branch_implies_node {α : Lpofin (Label act test)} {x : Node} :
     ∀ φ : ↑α.branches, φ ≤ α.form x → x ∈ α.val.nodes := by
   intro φ hle
-  have ⟨_, _, _, heq, ⟨⟨v, hsat⟩, _, _⟩, hm_x⟩ := φ.property
+  have ⟨_, _, f, heq, _, hm_x⟩ := φ.property
+  have ⟨v, hsat⟩ := mk_form_sat f
   refine (α.val.property.form_dom x).mp ?_
   use v; exact hle v (heq ▸ hsat)
 
@@ -172,7 +173,8 @@ lemma seq_valid (α β : Lpofin (Label act test)) (f : CopyFn α β) :
         exact Exists.choose_spec (p := fun ψ ↦ x ∈ (f ψ).nodes) _
     · have hx' := branch_implies_node φ hx
       simp only [seq_base, nodes] at hlab
-      have ⟨t, _, g, heq, ⟨⟨v, hsat⟩, _, hstuck⟩, _⟩ := φ.property
+      have ⟨t, _, g, heq, ⟨_, hstuck⟩, _⟩ := φ.property
+      have ⟨v, hsat⟩ := mk_form_sat g
       rw [heq] at hx; have hform := hx v hsat
       have : ¬ (∃ φ, x ∈ (f φ).nodes) := by
         intro ⟨ψ, hx⟩; exact Set.disjoint_left.mp (f.property ψ).2.1 hx' hx
@@ -194,7 +196,8 @@ lemma seq_valid (α β : Lpofin (Label act test)) (f : CopyFn α β) :
           Set.disjoint_right.mp (f.2 ⟨φ, hφ⟩).2.1 hx
         simp only [hx', ↓reduceIte]
         obtain ⟨v, hv⟩ := ((f ⟨φ, hφ⟩).val.property.form_dom x).mpr hx
-        have ⟨t, ht, g, heq, ⟨⟨v', hsat⟩, hconj, hstuck⟩, _⟩ := hφ
+        have ⟨t, ht, g, heq, ⟨hconj, hstuck⟩, _⟩ := hφ
+        have ⟨v', hsat⟩ := mk_form_sat g
         refine ⟨(v ∩ (f ⟨φ, hφ⟩).nodes) ∪ (v' ∩ α.nodes), ⟨φ, hφ⟩, ?_, ?_⟩
         · refine (((f ⟨φ, hφ⟩).val.property.form _ hx).1 _ _ ?_).mp hv
           refine Set.disjoint_left.mpr ?_; intro y hy hrel
@@ -254,7 +257,7 @@ lemma seq_valid (α β : Lpofin (Label act test)) (f : CopyFn α β) :
         · right; use φ; right; exact ⟨hform, hx⟩
       · refine Form.DependsOn.and ?_ ?_
         · exact ((f φ).val.property.form  _ hx).1
-        · have ⟨s, ht, g, heq, ⟨⟨v, hsat⟩, hconj, _⟩, _⟩ := φ.property
+        · have ⟨s, ht, g, heq, ⟨hconj, _⟩, _⟩ := φ.property
           rw [heq]
           refine Form.DependsOn.monotone _
             (?_ : (⋃ z : ↑s, { z.val }) ⊆ _)
@@ -279,7 +282,7 @@ lemma seq_valid (α β : Lpofin (Label act test)) (f : CopyFn α β) :
         exact ((f φ).val.property.form _ hx).2 _ hrel _ hform
       · exfalso; simp only [Set.mem_iUnion] at hx
         have ⟨ψ, hx⟩ := hx; refine Set.disjoint_right.mp (f.property ψ).2.1 hx ?_
-        have ⟨t, _, g, heq, ⟨⟨v, hsat⟩, _⟩, _⟩ := φ.property
+        have ⟨t, _, g, heq, _⟩ := φ.property; have ⟨v, hsat⟩ := mk_form_sat g
         rw [heq] at hform; refine (α.val.property.form_dom _).mp ⟨v, ?_⟩
         exact hform _ hsat
 
@@ -322,7 +325,8 @@ lemma seq_monotone {α α' β β' : Lpofin (Label act test)} {f : CopyFn α β} 
           · right; refine Set.mem_iUnion.mpr ⟨φ, ?_⟩;
             exact (hext φ).downcl x hx y hyx
           · left
-            have ⟨t, _, g, heq, ⟨⟨v, hsat⟩, _, hstk⟩, _⟩ := φ.property
+            have ⟨t, _, g, heq, ⟨_, hstk⟩, _⟩ := φ.property
+            have ⟨v, hsat⟩ := mk_form_sat g
             have hy' : y ∈ α'.nodes := by
               refine (α'.val.property.form_dom _).mp ?_
               rw [heq] at hy; exact ⟨v, hy _ hsat⟩
@@ -348,7 +352,8 @@ lemma seq_monotone {α α' β β' : Lpofin (Label act test)} {f : CopyFn α β} 
         · right; refine ⟨?_, (hext _).nodes hy'⟩
           refine le_of_le_of_eq hform (hle₁.form _ ?_)
           refine (α.val.property.form_dom _).mp ?_
-          have ⟨t, _, g, heq, ⟨⟨v, hsat⟩, _⟩, _⟩ := φ.property
+          have ⟨t, _, g, heq, _⟩ := φ.property
+          have ⟨v, hsat⟩ := mk_form_sat g
           rw [heq] at hform; exact ⟨v, hform _ hsat⟩
     · simp only [Lpo.nodes, seq, seq_base, nodes, Set.mem_union, Set.mem_iUnion, Lpo.rel] at *
       obtain (hx | ⟨φ, hx⟩) := hx <;>
@@ -391,7 +396,8 @@ lemma seq_monotone {α α' β β' : Lpofin (Label act test)} {f : CopyFn α β} 
           rw [this]; exact hrel
       · exfalso; refine Set.disjoint_left.mp (g.property _).2.1 ?_ ((hext _).nodes hx)
         refine (α'.val.property.form_dom _).mp ?_
-        have ⟨t, _, g, heq, ⟨⟨v, hsat⟩, _⟩, _⟩ := φ'.property
+        have ⟨t, _, g, heq, _⟩ := φ'.property
+        have ⟨v, hsat⟩ := mk_form_sat g
         rw [heq] at hform; exact ⟨v, hform _ hsat⟩
   · intro x; by_cases hx : x ∈ (α.seq β f).nodes
     · rcases hx with hx | hx
@@ -463,7 +469,7 @@ lemma seq_monotone {α α' β β' : Lpofin (Label act test)} {f : CopyFn α β} 
               exact Set.disjoint_right.mp ((f.property _).2.2 _ heq) hz.1
           exact this
       · right
-        have ⟨t, _, g, heq, ⟨⟨v, hsat⟩, himp, hstk⟩, hmax⟩ := φ.property
+        have ⟨t, _, g, heq, ⟨himp, hstk⟩, hmax⟩ := φ.property
         rw [le_branches hle₁] at hφ
         have h := φ.property
         have ⟨v', hform⟩ := not_forall.mp ((Set.mem_inter h).mt hφ)
