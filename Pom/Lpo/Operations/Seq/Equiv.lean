@@ -166,4 +166,18 @@ lemma mem_iUnion_symm {ι κ α : Type} {f : ι → Set α} {g : κ → Set α}
   simp only [Subtype.coe_eta, Equiv.apply_symm_apply] at this
   rw [this]; exact Subtype.coe_prop _
 
+def restrict {α : Type} {X X' Y : Set α} (e : X ≃ Y) (h : X' ⊆ X) :
+    X' ≃ Set.range fun x : ↑X' ↦ (e ⟨x.val, h x.property⟩).val := {
+  toFun x := ⟨(e ⟨x.val, h x.property⟩).val, Set.mem_range.mpr ⟨x, rfl⟩⟩
+  invFun y := by
+    refine ⟨(e.symm ⟨y.val, ?_⟩).val, ?_⟩
+    · have ⟨x, heq⟩ := Set.mem_range.mp y.property
+      rw [← heq]; exact Subtype.coe_prop _
+    · have ⟨x, heq⟩ := Set.mem_range.mp y.property
+      conv => rhs; arg 1; arg 2; arg 1; exact heq.symm
+      simp only [Subtype.coe_eta, symm_apply_apply, Subtype.coe_prop]
+  left_inv x := by simp only [Subtype.coe_eta, symm_apply_apply]
+  right_inv y := by simp only [Subtype.coe_eta, apply_symm_apply]
+}
+
 end Equiv

@@ -113,6 +113,42 @@ lemma empty_vars {p : Form α} (hd : p.DependsOn ∅) (hsat : p.sat) : p = Form.
   refine (hd v v' ?_).mpr hform
   exact Set.disjoint_empty _
 
+lemma inter {p : Form α} {s t : Set α} (h₁ : p.DependsOn s) (h₂ : p.DependsOn t) :
+    p.DependsOn (s ∩ t) := by
+  intro v v' hd
+  have hvv' {x} : x ∈ v ∩ s ∩ t ↔ x ∈ v' ∩ s ∩ t := by
+    constructor; all_goals
+    · intro ⟨⟨hv, hs⟩, ht⟩; refine ⟨⟨?_, hs⟩, ht⟩
+      have ⟨hl, hr⟩ := Set.disjoint_right.mp hd ⟨hs, ht⟩
+        |> Set.mem_symmDiff.mpr.mt
+        |> not_or.mp
+      refine not_and.mp ?_ hv |> not_not.mp; assumption
+  let u := (v ∩ s ∩ t) ∪ (v' ∩ (t \ s)) ∪ (v ∩ (s \ t))
+  refine (h₁ v u ?_).trans ?_ <;> subst u
+  · refine Set.disjoint_left.mpr ?_; intro x hsd hx
+    rcases Set.mem_symmDiff.mp hsd with ⟨hxv, h'⟩ | ⟨(h | h) | h, h'⟩
+    · apply h'; by_cases ht : x ∈ t
+      · left; left; exact ⟨⟨hxv, hx⟩, ht⟩
+      · right; exact ⟨hxv, hx, ht⟩
+    · exact h' h.1.1
+    · exact h.2.2 hx
+    · exact h' h.1
+  · apply h₂ _ _; refine Set.disjoint_left.mpr ?_; intro x hsd hx
+    rcases Set.mem_symmDiff.mp hsd with ⟨(h | h) | h, h'⟩ | ⟨hxv, h'⟩
+    · apply h'; exact (hvv'.mp h).1.1
+    · exact h' h.1
+    · exact h.2.2 hx
+    · apply h'; by_cases hs : x ∈ s
+      · left; left; apply hvv'.mpr; exact ⟨⟨hxv, hs⟩, hx⟩
+      · left; right; exact ⟨hxv, hx, hs⟩
+
+lemma restrict {p : Form α} {s v : Set α} (hdep : p.DependsOn s) : p v ↔ p (v ∩ s) := by
+  apply iff_iff_eq.mpr
+  refine hdep _ _ ?_; refine Set.disjoint_left.mpr ?_; intro x hsd hx
+  rcases Set.mem_symmDiff.mp hsd with ⟨hv, hvs⟩ | ⟨⟨hv, _⟩, hv'⟩
+  · exact hvs ⟨hv, hx⟩
+  · exact hv' hv
+
 end DependsOn
 
 end Form

@@ -4,8 +4,10 @@ import Pom.Order.Extension
 
 namespace Pomfin
 
-lemma exists_copy_fn {l : Type} [PartialOrder l] [OrderBot l] (α β : Lpofin l) :
-    Nonempty (Lpofin.CopyFn α β) := by
+variable {act test : Type}
+
+lemma exists_copy_fn
+    (α β : Lpofin (Label act test)) : Nonempty (Lpofin.CopyFn α β) := by
   have hc : Cardinal.mk (α.branches × β.nodes) ≤ Cardinal.mk α.nodes.compl := by
     refine le_of_le_of_eq Cardinal.mk_le_aleph0 ?_
     symm; exact @Cardinal.mk_eq_aleph0 _ _ α.property.infinite_compl.to_subtype
@@ -35,34 +37,35 @@ lemma exists_copy_fn {l : Type} [PartialOrder l] [OrderBot l] (α β : Lpofin l)
     have := e_base.injective (Subtype.val_injective heq)
     exact hne (Prod.mk_inj.mp this).1.symm
 
-noncomputable def seq {l : Type} [PartialOrder l] [OrderBot l] (p q : Pomfin l) : Pomfin l :=
+variable [PartialOrder act] [PartialOrder test]
+
+noncomputable def seq (p q : Pomfin (Label act test)) : Pomfin (Label act test) :=
   Quotient.map₂
     (fun α β ↦ Lpofin.seq α β (Classical.choice (exists_copy_fn α β)))
     (fun _ _ h _ _ h' ↦ Lpofin.seq_isomorphic h h')
     p q
 
-lemma mem_seq {l : Type} [PartialOrder l] [OrderBot l]
-    (α β : Lpofin l) (f : Lpofin.CopyFn α β) :
+lemma mem_seq (α β : Lpofin (Label act test)) (f : Lpofin.CopyFn α β) :
     Lpofin.seq α β f ∈ seq (mk α) (mk β) := by
   conv => lhs; exact Quotient.map₂_mk _ _ _ _
   refine Quotient.eq_iff_equiv.mpr (Lpofin.seq_isomorphic ?_ ?_) <;> rfl
 
-lemma exists_rep_seq {l : Type} [PartialOrder l] [OrderBot l] (p q : Pomfin l) :
+lemma exists_rep_seq (p q : Pomfin (Label act test)) :
     ∃ α β f, α ∈ p ∧ β ∈ q ∧ Lpofin.seq α β f ∈ seq p q := by
   obtain ⟨α, rfl⟩ := p.exists_rep
   obtain ⟨β, rfl⟩ := q.exists_rep
   have ⟨f⟩ := exists_copy_fn α β
   exact ⟨α, β, f, rfl, rfl, mem_seq _ _ _⟩
 
-lemma seq_monotone {l : Type} [PartialOrder l] [OrderBot l] {p p' q q' : Pomfin l}
+lemma seq_monotone {p p' q q' : Pomfin (Label act test)}
     (hle : p ≤ p') (hle' : q ≤ q') : seq p q ≤ seq p' q' := by
   obtain ⟨α, rfl, α', rfl, hle₁⟩ := Pomfin.le_iff.mp hle
   obtain ⟨β, rfl, β', rfl, hle₂⟩ := Pomfin.le_iff.mp hle'
   have ⟨g⟩ := exists_copy_fn α' β'
   let up (φ : α.branches) : α'.branches :=
-    ⟨φ.val, Lpofin.branches_monotone hle₁ φ.property⟩
+    ⟨φ.val.up_cast hle₁, Lpofin.branches_monotone hle₁ φ.property⟩
   have h (φ : α.branches) :
-      ∃ γ : Lpofin l, γ ≈ β ∧ γ ≤ g (up φ) := by
+      ∃ γ : Lpofin _, γ ≈ β ∧ γ ≤ g (up φ) := by
     have ⟨e, heq⟩ := (g.property (up φ)).1
     let e' := Lpo.perm_subset e.symm hle₂.nodes
     refine ⟨β.permute e', ?_, ?_⟩
@@ -80,7 +83,11 @@ lemma seq_monotone {l : Type} [PartialOrder l] [OrderBot l] {p p' q q' : Pomfin 
       refine Set.disjoint_of_subset ?_ ?_ ((g.property (up φ)).2.2 (up ψ) ?_)
       · exact (hf φ).2.nodes
       · exact (hf ψ).2.nodes
-      · unfold up; simpa only [ne_eq, Subtype.mk.injEq, SetLike.coe_eq_coe]
+      · unfold up;
+        intro hc; simp only [Subtype.mk.injEq, Lpofin.PathCond.ext_iff] at hc
+        apply hne; ext1; ext1
+        · exact hc.1
+        · exact hc.2
   · refine (congrArg _ (Quotient.map₂_mk _ _ _ _)).trans ?_
     refine val_mem_to_pom.mp (Quotient.eq_iff_equiv.mpr ?_)
     exact Lpofin.seq_isomorphic (Setoid.refl _) (Setoid.refl _)
@@ -94,19 +101,21 @@ end Pomfin
 
 namespace Pom
 
-noncomputable def seq {l : Type} [DCPO l] [OrderBot l] [ScottCompact l] :
-    Pom l → Pom l → Pom l :=
+variable {act test : Type}
+  [DCPO act] [ScottCompact act]
+  [DCPO test] [ScottCompact test]
+
+noncomputable def seq : Pom (Label act test) → Pom (Label act test) → Pom (Label act test) :=
   Pom.ext₂ (fun p q ↦ (Pomfin.seq p q).to_pom) Pomfin.seq_monotone
 
-lemma seq_monotone {l : Type} [DCPO l] [OrderBot l] [ScottCompact l] {p p' q q' : Pom l} :
+lemma seq_monotone {p p' q q' : Pom (Label act test)} :
     p ≤ p' → q ≤ q' → seq p q ≤ seq p' q' := ext₂_monotone (hf := Pomfin.seq_monotone)
 
 open OmegaCompletePartialOrder
 
-lemma seq_continuous {l : Type} [DCPO l] [OrderBot l] [ScottCompact l]
-    {c c' : Chain (Pom l)} :
+lemma seq_continuous {c c' : Chain (Pom (Label act test))} :
     seq (ωSup c) (ωSup c') = ωSup {
-      toFun n := seq (c n) (c' n)
+      toFun n := (seq (c n) (c' n) : Pom (Label act test))
       monotone' _ _ hle := seq_monotone (c.monotone' hle) (c'.monotone' hle)
     } := ext₂_continuous (hf := Pomfin.seq_monotone)
 
