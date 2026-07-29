@@ -72,6 +72,12 @@ noncomputable def union {α : Lpofin (Label act test)} (φ ψ : PathCond α) : P
   tests_valid := Set.union_subset φ.tests_valid ψ.tests_valid
 }
 
+def restrict {α : Lpofin (Label act test)} (φ : PathCond α) (s : Set Node) : PathCond α := {
+  tests := φ.tests ∩ s
+  truth := fun x ↦ φ.truth ⟨x.val, x.property.1⟩
+  tests_valid := fun _ hx ↦ φ.tests_valid hx.1
+}
+
 instance {α : Lpofin (Label act test)} : LE (PathCond α) where
   le φ ψ :=
     ∃ (h : φ.tests ⊆ ψ.tests),
@@ -105,6 +111,12 @@ lemma le_union_right {α : Lpofin (Label act test)} {φ ψ : PathCond α}
   · conv => rhs; exact dif_pos hx
     symm; exact h ⟨hx, x.property⟩
   · symm; exact dif_neg hx
+
+lemma restrict_le {α : Lpofin (Label act test)} (φ : PathCond α) (s : Set Node) :
+    φ.restrict s ≤ φ := by
+  constructor
+  · intro x; rfl
+  · exact Set.inter_subset_left
 
 lemma toForm_antitone {α : Lpofin (Label act test)} : Antitone (toForm (α := α)) := by
   intro φ ψ ⟨hsub, heq⟩ v hψ x
@@ -196,6 +208,14 @@ lemma implies_weaken {α : Lpofin (Label act test)} {φ ψ : PathCond α} {P : F
     · exact h
     · exfalso; exact h' h.2
   · intro h; exact ⟨Or.inl h, h.2⟩
+
+lemma restrict_entails {α : Lpofin (Label act test)} (φ : PathCond α)
+    {q : Form Node} {s : Set Node} (hq : q.DependsOn s) (hφq : φ.toForm ≤ q) :
+    (φ.restrict s).toForm ≤ q := by
+  refine implies_weaken (φ.restrict_le s) hφq ?_
+  refine hq.monotone _ ?_
+  intro x hx ⟨ht, h⟩; apply h
+  exact ⟨ht, hx⟩
 
 end PathCond
 
