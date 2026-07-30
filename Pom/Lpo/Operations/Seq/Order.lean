@@ -75,7 +75,7 @@ lemma seq_monotone_rel (hle : α ≤ α') (hext : f.extends_to g hle)
         refine (α.val.property.form_dom _).mp ?_
         have ⟨v, hsat⟩ := φ.val.sat
         exact ⟨v, hform _ hsat⟩
-  · simp only [Lpo.nodes, seq, seq_base, nodes, Set.mem_union, Set.mem_iUnion, Lpo.rel] at *
+  · simp only [Lpo.nodes, seq, seq_base, nodes, Set.mem_union, Set.mem_iUnion] at *
     obtain (hx | ⟨φ, hx⟩) := hx <;>
     obtain (hy | ⟨ψ, hy⟩) := hy <;>
     rintro (hrel | ⟨φ', hrel | ⟨hform, hy'⟩⟩)
@@ -91,7 +91,8 @@ lemma seq_monotone_rel (hle : α ≤ α') (hext : f.extends_to g hle)
       refine le_of_eq_of_le ?_ (le_of_le_of_eq hform ?_)
       · conv => lhs; exact (PathCond.cast_toForm (hle := hle)).symm
         refine congrArg _ ?_
-        refine congrArg Subtype.val (not_not.mp (((g.property φ').2.2 ⟨ψ.val.up_cast hle, ?_⟩).mt ?_)).symm
+        refine congrArg Subtype.val
+          (not_not.mp (((g.property φ').2.2 ⟨ψ.val.up_cast hle, ?_⟩).mt ?_)).symm
         · exact branches_monotone hle ψ.property
         · exact Set.not_disjoint_iff.mpr ⟨y, hy', (hext _).nodes hy⟩
       · symm; exact hle.form _ hx
@@ -105,14 +106,17 @@ lemma seq_monotone_rel (hle : α ≤ α') (hext : f.extends_to g hle)
     · refine Or.inr ⟨φ, Or.inl ?_⟩
       have ⟨hx', hy'⟩ := (g _).val.property.rel_dom hrel
       have heq : φ.val.up_cast hle = φ'.val := by
-        refine congrArg Subtype.val (not_not.mp (((g.property φ').2.2 ⟨φ.val.up_cast hle, ?_⟩).mt ?_)).symm
+        refine congrArg Subtype.val
+          (not_not.mp (((g.property φ').2.2 ⟨φ.val.up_cast hle, ?_⟩).mt ?_)).symm
         · exact branches_monotone hle φ.property
         · exact Set.not_disjoint_iff.mpr ⟨x, hx', (hext _).nodes hx⟩
+      have heq' : ψ.val.up_cast hle = φ'.val := by
+        refine congrArg Subtype.val (not_not.mp (((g.property φ').2.2
+          ⟨ψ.val.up_cast hle, branches_monotone hle ψ.property⟩).mt ?_)).symm
+        exact Set.not_disjoint_iff.mpr ⟨y, hy', (hext _).nodes hy⟩
       have : φ = ψ := by
-        rcases φ' with ⟨φ', _⟩; subst heq; sorry
-        -- refine not_not.mp (((g.property _).2.2 ⟨ψ.val.up_cast hle₁, ?_⟩).mt ?_)
-        -- · exact branches_monotone hle₁ ψ.property
-        -- · exact Set.not_disjoint_iff.mpr ⟨y, hy', (hext _).nodes hy⟩
+        apply Subtype.ext
+        exact PathCond.up_cast_injective hle (heq.trans heq'.symm)
       subst this; refine ((hext φ).rel _ hx _ hy).mpr ?_
       · have {h} : ⟨φ.val.up_cast hle, h⟩ = φ' := by ext1; exact heq
         rw [this]; exact hrel
@@ -150,9 +154,52 @@ lemma seq_monotone_form (hle : α ≤ α') (hext : f.extends_to g hle)
   · have hx' := hle.nodes hx
     ext v; refine or_congr ?_ ?_
     · apply iff_iff_eq.mpr; exact congrFun (hle.form _ hx) _
-    · sorry
+    · constructor
+      · rintro ⟨φ, hform, -⟩
+        have hxcopy := ((f φ).val.property.form_dom x).mp ⟨v, hform⟩
+        exact False.elim (Set.disjoint_right.mp (f.property φ).2.1 hxcopy hx)
+      · rintro ⟨φ, hform, -⟩
+        have hxcopy := ((g φ).val.property.form_dom x).mp ⟨v, hform⟩
+        exact False.elim (Set.disjoint_right.mp (g.property φ).2.1 hxcopy hx')
   · rcases Set.mem_iUnion.mp hx with ⟨φ, h⟩
-    sorry
+    simp only [Lpofin.form, Lpo.form, Lpofin.nodes, Lpo.nodes, seq, seq_base] at *
+    have hx₁ := Set.disjoint_right.mp (f.property φ).2.1 h
+    have hx₂ := Set.disjoint_right.mp (g.property _).2.1 ((hext φ).nodes h)
+    simp only [Lpofin.nodes, Lpo.nodes] at hx₁
+    simp only [Lpofin.nodes, Lpo.nodes] at hx₂
+    ext v
+    change (α.form x v ∨ Form.sOr (fun ψ ↦ ((f ψ).form x).and ψ.val.toForm) v) ↔
+      (α'.form x v ∨ Form.sOr (fun ψ ↦ ((g ψ).form x).and ψ.val.toForm) v)
+    constructor
+    · rintro (hα | ⟨ψ, hψ, hφ⟩)
+      · exact False.elim (hx₁ ((α.val.property.form_dom x).mp ⟨v, hα⟩))
+      · right
+        have heq : φ = ψ := by
+          by_contra hc
+          have hd := (f.property φ).2.2 ψ hc
+          have hx := Set.disjoint_left.mp hd h
+          exact ((f ψ).val.property.form_dom x).mp.mt hx ⟨v, hψ⟩
+        subst heq
+        exact ⟨⟨φ.val.up_cast hle, branches_monotone hle φ.property⟩,
+          (congrFun ((hext _).form _ h) _).mp hψ,
+          (congrFun (PathCond.cast_toForm (φ := φ.val) (hle := hle)) v).mpr hφ⟩
+    · rintro (hα | ⟨ψ, hform, hψ⟩)
+      · exact False.elim (hx₂ ((α'.val.property.form_dom x).mp ⟨v, hα⟩))
+      · right
+        have heq : ψ.val = φ.val.up_cast hle := by
+          have hx' := ((g ψ).val.property.form_dom _).mp ⟨_, hform⟩
+          refine congrArg Subtype.val (not_not.mp (((g.property ψ).2.2
+            ⟨φ.val.up_cast hle, branches_monotone hle φ.property⟩).mt ?_))
+          exact Set.not_disjoint_iff.mpr ⟨x, hx', (hext _).nodes h⟩
+        refine ⟨φ, ?_, ?_⟩
+        · refine (congrFun ((hext φ).form _ h) _).mpr ?_
+          have hsub : ⟨φ.val.up_cast hle, branches_monotone hle φ.property⟩ = ψ := by
+            ext1
+            exact heq.symm
+          rw [hsub]
+          exact hform
+        · rw [← PathCond.cast_toForm (hle := hle), ← heq]
+          exact hψ
     -- simp only [Lpo.form, Lpofin.nodes, Lpo.nodes, seq, seq_base] at *
     -- have hx₁ := Set.disjoint_right.mp (f.property φ).2.1 h
     -- have hx₂ := Set.disjoint_right.mp (g.property _).2.1 ((hext φ).nodes h)
@@ -180,10 +227,64 @@ lemma seq_monotone_form (hle : α ≤ α') (hext : f.extends_to g hle)
     --     rw [this]; rfl
     --   · rw [← heq]; exact hψ
 
+lemma branch_missing_test_bot_predecessor (hle : α ≤ α') (φ : ↑α'.branches)
+    (hmissing : ¬ φ.val.tests ⊆ α.tests) :
+    ∃ z ∈ α.val.bots, φ.val.toForm ≤ α'.form z := by
+  rw [Set.not_subset] at hmissing
+  obtain ⟨x, hxtests, hxnot⟩ := hmissing
+  have hform := φ.property.1 x hxtests
+  have hxnode : x ∈ α'.nodes := tests_sub_nodes (φ.val.tests_valid hxtests)
+  rcases hle.succ x hxnode with hx | ⟨z, hz, hrel⟩
+  · refine ⟨x, ⟨hx, ?_⟩, hform⟩
+    rcases isTest_of_le_or_bot hle (φ.val.tests_valid hxtests) with htest | hbot
+    · exact False.elim (hxnot htest)
+    · exact hbot
+  · refine ⟨z, hz, hform.trans ?_⟩
+    exact (α'.val.property.form z (hle.nodes hz.1)).2 x hrel
+
+lemma branch_entails_reachable_bot_form (hle : α ≤ α') (φ : PathCond α)
+    (hφ : φ.up_cast hle ∈ α'.branches)
+    (htests : φ.tests ⊆ α.tests) (z : Node) (hz : z ∈ α.nodes)
+    (hzbot : α.lab z = ⊥) (hreach : α.ReachableWith φ z)
+    (v : Set Node) (hφv : φ.toForm v) (hzv : α.form z v) :
+    φ.toForm ≤ α'.form z := by
+  sorry
+
+lemma branch_old_tests_bot_predecessor (hle : α ≤ α') (φ : PathCond α)
+    (hφ : φ.up_cast hle ∈ α'.branches)
+    (htests : φ.tests ⊆ α.tests)
+    (hnot : ¬ φ.toForm ≤ (α.stuck φ).not) :
+    ∃ z ∈ α.val.bots, φ.toForm ≤ α'.form z := by
+  have hex : ∃ v, φ.toForm v ∧ α.stuck φ v := by
+    by_contra hn
+    apply hnot
+    intro v hφv hstuck
+    exact hn ⟨v, hφv, hstuck⟩
+  obtain ⟨v, hφv, ⟨⟨z, hz, hzbot, hreach⟩, hzv⟩⟩ := hex
+  refine ⟨z, ⟨hz, hzbot⟩, ?_⟩
+  exact branch_entails_reachable_bot_form hle _ hφ htests z hz hzbot hreach v hφv hzv
+
+lemma branch_lift_or_bot_predecessor (hle : α ≤ α') (φ : ↑α'.branches) :
+    (∃ ψ : ↑α.branches, ψ.val.up_cast hle = φ.val) ∨
+      ∃ z ∈ α.val.bots, φ.val.toForm ≤ α'.form z := by
+  by_cases htests : φ.val.tests ⊆ α.tests
+  · let ψ : PathCond α := {
+      tests := φ.val.tests
+      truth := φ.val.truth
+      tests_valid := htests
+    }
+    by_cases hψ : ψ ∈ α.branches
+    · left; refine ⟨⟨ψ, hψ⟩, ?_⟩; rfl
+    · right; apply branch_old_tests_bot_predecessor hle ψ φ.property htests
+      intro hstuck; apply hψ
+      rw [le_branches hle]
+      exact ⟨φ.val, φ.property, rfl, hstuck⟩
+  · exact Or.inr (branch_missing_test_bot_predecessor hle φ htests)
+
 lemma seq_monotone_succ (hle : α ≤ α') (hext : f.extends_to g hle)
     (x : Node) (hx : x ∈ (α'.seq β' g).nodes) :
     x ∈ (α.seq β f).nodes ∨ ∃ z ∈ (α.seq β f).val.bots, (α'.seq β' g).rel z x := by
-  simp only [Lpo.nodes, seq, seq_base, Set.mem_union, Set.mem_iUnion, Lpo.bots, Lpo.rel, Lpo.lab]
+  simp only [Lpo.nodes, seq, seq_base, Set.mem_union, Set.mem_iUnion, Lpo.bots, Lpo.lab]
   rcases hx with (hx | ⟨φ, hx⟩)
   · rcases hle.succ _ hx with (hx' | ⟨z, hz, hrel⟩)
     · left; left; exact hx'
@@ -191,53 +292,29 @@ lemma seq_monotone_succ (hle : α ≤ α') (hext : f.extends_to g hle)
       refine (dif_neg ?_).trans hz.2
       intro ⟨φ, hz'⟩
       exact Set.disjoint_left.mp (f.property φ).2.1 hz.1 hz'
-  · sorry
-    -- by_cases hφ : φ.val ∈ α.branches
-    -- · rcases (hext ⟨_, hφ⟩).succ _ hx with (hx' | ⟨z, hz, hrel⟩)
-    --   · left; right; exact ⟨_, hx'⟩
-    --   · right; refine ⟨z, ⟨Or.inr ⟨_, hz.1⟩, ?_⟩, Or.inr ⟨φ, Or.inl hrel⟩⟩
-    --     refine (dif_pos ⟨_, hz.1⟩).trans ?_
-    --     have {ψ} : (f ψ).lab z = ⊥ := by
-    --       by_cases heq : ψ = ⟨φ.val, hφ⟩
-    --       · subst heq; exact hz.2
-    --       · refine (f ψ).val.property.lab_dom _ ?_
-    --         exact Set.disjoint_right.mp ((f.property _).2.2 _ heq) hz.1
-    --     exact this
-    -- · right
-    --   have ⟨t, _, g, heq, ⟨himp, hstk⟩, hmax⟩ := φ.property
-    --   rw [le_branches hle₁] at hφ
-    --   have h := φ.property
-    --   have ⟨v', hform⟩ := not_forall.mp ((Set.mem_inter h).mt hφ)
-    --   have ⟨hv, hform⟩ := Classical.not_imp.mp hform
-    --   have ⟨⟨z, hz⟩, hform⟩ := not_not.mp hform
-    --   by_cases hz' : z ∈ t
-    --   · refine ⟨z, ⟨Or.inl hz.1, ?_⟩, Or.inr ⟨φ, Or.inr ⟨?_, hx⟩⟩⟩
-    --     · refine (dif_neg ?_).trans hz.2
-    --       intro ⟨φ, hz'⟩; exact Set.disjoint_left.mp (f.property φ).2.1 hz.1 hz'
-    --     · rw [heq]; intro v hv; exact himp _ hv ⟨_, hz'⟩
-    --   · exfalso; sorry
-        --  rw [heq] at hv; refine hstk _ hv ?_
-        -- have : z ∉ α'.tests := by
-        --   intro hc; refine hmax hz' hc ⟨?_, ?_, ?_⟩ (b := true)
-        --   · refine ⟨v' ∪ {z}, ?_⟩; intro y; by_cases heq : y = z
-        --     · simp only [node_lit, heq, ↓reduceDIte, ↓reduceIte, Set.union_singleton]
-        --       exact Set.mem_insert _ _
-        --     · have hy := Set.mem_of_mem_insert_of_ne y.property heq
-        --       have hform := hv ⟨y.val, hy⟩
-        --       simp only [node_lit, heq, ↓reduceDIte, Set.union_singleton]
-        --       by_cases h : g ⟨↑y, hy⟩ = true
-        --       · conv => exact congrFun (if_pos h) _
-        --         conv at hform => exact congrFun (if_pos h) _
-        --         exact Set.mem_insert_of_mem _ hform
-        --       · conv => exact congrFun (if_neg h) _
-        --         conv at hform => exact congrFun (if_neg h) _
-        --         intro hc; apply hform; exact Set.mem_of_mem_insert_of_ne hc heq
-        --   · sorry
-        --   · sorry
-        -- have := (hmax hz').mt
-        -- have := not_and.mp this; rw [Decidable.not_not] at this
-        -- have := this (hle₁.nodes hz.1)
-        -- exact this _ ((congrFun (hle₁.form _ hz.1) _).mp hform)
+  · rcases hx with ⟨⟨φ, rfl⟩, hx⟩
+    rcases branch_lift_or_bot_predecessor hle φ with ⟨ψ, heq⟩ | ⟨z, hz, hform⟩
+    · have hsub : ⟨ψ.val.up_cast hle, branches_monotone hle ψ.property⟩ = φ := by
+        ext1
+        exact heq
+      subst hsub
+      rcases (hext ψ).succ _ hx with hx' | ⟨z, hz, hrel⟩
+      · left; right; exact ⟨(f ψ).nodes, ⟨ψ, rfl⟩, hx'⟩
+      · right
+        refine ⟨z, ⟨Or.inr ⟨ψ, hz.1⟩, ?_⟩,
+          Or.inr ⟨⟨ψ.val.up_cast hle, branches_monotone hle ψ.property⟩, Or.inl hrel⟩⟩
+        refine (dif_pos ⟨ψ, hz.1⟩).trans ?_
+        have {η} : (f η).lab z = ⊥ := by
+          by_cases heq : η = ψ
+          · subst heq; exact hz.2
+          · refine (f η).val.property.lab_dom _ ?_
+            exact Set.disjoint_right.mp ((f.property _).2.2 _ heq) hz.1
+        exact this
+    · right
+      refine ⟨z, ⟨Or.inl hz.1, ?_⟩, Or.inr ⟨φ, Or.inr ⟨hform, hx⟩⟩⟩
+      refine (dif_neg ?_).trans hz.2
+      intro ⟨ψ, hz'⟩
+      exact Set.disjoint_left.mp (f.property ψ).2.1 hz.1 hz'
 
 open Classical in
 lemma seq_monotone (hle : α ≤ α') (hext : f.extends_to g hle) :

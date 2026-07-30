@@ -159,6 +159,11 @@ def up_cast [Preorder act] [Preorder test] {α β : Lpofin (Label act test)} (φ
     exact (Label.isTest_iff _).mpr ⟨_, h⟩
 }
 
+lemma up_cast_injective [Preorder act] [Preorder test] {α β : Lpofin (Label act test)}
+    (hle : α ≤ β) : Function.Injective (fun φ : PathCond α ↦ φ.up_cast hle) := by
+  intro φ ψ h; have ⟨htst, htr⟩ := PathCond.ext_iff.mp h
+  ext1 <;> assumption
+
 lemma cast_toForm [Preorder act] [Preorder test] {α β : Lpofin (Label act test)} {φ : PathCond α}
     {hle : α ≤ β} : (φ.up_cast hle).toForm = φ.toForm := by
   ext v; refine forall_congr' ?_; intro x; rfl

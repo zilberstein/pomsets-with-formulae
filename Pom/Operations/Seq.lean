@@ -84,17 +84,10 @@ lemma seq_monotone {p p' q q' : Pomfin (Label act test)}
       refine Set.disjoint_of_subset ?_ ?_ ((g.property (up φ)).2.2 (up ψ) ?_)
       · exact (hf φ).2.nodes
       · exact (hf ψ).2.nodes
-      · unfold up;
-        intro hc; simp only [Subtype.mk.injEq, Lpofin.PathCond.ext_iff] at hc
-        apply hne; ext1; ext1
-        · exact hc.1
-        · exact hc.2
-  · refine (congrArg _ (Quotient.map₂_mk _ _ _ _)).trans ?_
-    refine val_mem_to_pom.mp (Quotient.eq_iff_equiv.mpr ?_)
-    exact Lpofin.seq_isomorphic (Setoid.refl _) (Setoid.refl _)
-  · refine (congrArg _ (Quotient.map₂_mk _ _ _ _)).trans ?_
-    refine val_mem_to_pom.mp (Quotient.eq_iff_equiv.mpr ?_)
-    exact Lpofin.seq_isomorphic (Setoid.refl _) (Setoid.refl _)
+      · unfold up; intro hc; apply hne; ext1
+        exact Lpofin.PathCond.up_cast_injective hle₁ <| (Subtype.mk.injEq _ _ _ _).mp hc
+  · apply val_mem_to_pom.mp; exact mem_seq α β _
+  · apply val_mem_to_pom.mp; exact mem_seq α' β' _
   · refine Lpofin.seq_monotone hle₁ ?_
     intro φ; exact (hf φ).2
 
