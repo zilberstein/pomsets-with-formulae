@@ -92,21 +92,160 @@ lemma isTest_of_le_or_bot [PartialOrder act] [PartialOrder test]
   | act a => rw [ha] at hlab; contradiction
   | test c => exact Or.inl ((Label.isTest_iff _).mpr ⟨c, ha⟩)
 
+lemma reachableWith_isotone [Preorder act] [Preorder test]
+    {α β : Lpofin (Label act test)} (hle : α ≤ β)
+    {φ : PathCond α} {x : Node} (hx : x ∈ α.nodes) :
+    α.ReachableWith φ x ↔ β.ReachableWith (φ.up_cast hle) x := by
+  constructor
+  · rintro ⟨ψ, hext, hform⟩
+    refine ⟨ψ.up_cast hle, hext, ?_⟩
+    rw [PathCond.cast_toForm]
+    exact hform.trans (le_form hle)
+  · rintro ⟨ψ, hext, hform⟩
+    let ψ' : PathCond α := {
+      tests := ψ.tests ∩ α.tests
+      truth := fun ⟨z, hz⟩ ↦ ψ.truth ⟨z, hz.1⟩
+      tests_valid := Set.inter_subset_right
+    }
+    have hext' : φ ≤ ψ' := by
+      rcases hext with ⟨hsub, htruth⟩
+      refine ⟨fun z hz ↦ ⟨hsub hz, φ.tests_valid hz⟩, ?_⟩
+      intro z; exact htruth z
+    refine ⟨ψ', hext', ?_⟩
+    rw [← PathCond.cast_toForm (hle := hle)]
+    conv => rhs; exact hle.form x hx
+    refine PathCond.implies_weaken ?_ hform ?_
+    · refine ⟨Set.inter_subset_left, fun _ ↦ rfl⟩
+    · conv => arg 1; exact (hle.form x hx).symm
+      refine (α.val.property.form _ hx).1.monotone _ ?_
+      intro y hyx ⟨hyt, h⟩
+      refine h ⟨hyt, ?_⟩
+      obtain ⟨b, hb⟩ := (Label.isTest_iff _).mp (ψ.tests_valid hyt)
+      have hlab := le_of_le_of_eq (hle.lab y) hb
+      cases hy : α.lab y with
+      | bot => exfalso; exact α.val.property.bot y hy x hyx
+      | fork => have := le_of_eq_of_le hy.symm hlab; contradiction
+      | act a => have := le_of_eq_of_le hy.symm hlab; contradiction
+      | test t => exact (Label.isTest_iff _).mpr ⟨t, hy⟩
+
+lemma not_reachableWith_of_form_le_stuck
+    {α : Lpofin (Label act test)} {φ : PathCond α} {x : Node}
+    (havoid : φ.toForm ≤ α.stuck.not) (hform : α.form x ≤ α.stuck) :
+    ¬ α.ReachableWith φ x := by
+  rintro ⟨η, hext, hη⟩
+  rcases η.sat with ⟨v, hv⟩
+  have hφv := PathCond.toForm_antitone hext v hv
+  exact (havoid v hφv) (hform v (hη v hv))
+
+lemma reachable_of_reachableWith {α : Lpofin (Label act test)} {φ : PathCond α} {x : Node}
+    (hr : α.ReachableWith φ x) : α.Reachable x := by
+  rcases hr with ⟨ψ, _, hform⟩
+  exact ⟨ψ, bot_le, hform⟩
+
+lemma reachableWith_pred {α : Lpofin (Label act test)} {φ : PathCond α} {x z : Node}
+    (hr : α.ReachableWith φ x) (hz : α.rel z x) : α.ReachableWith φ z := by
+  rcases hr with ⟨ψ, hext, hform⟩
+  refine ⟨ψ, hext, ?_⟩
+  exact hform.trans ((α.val.property.form z (α.val.property.rel_dom hz).1).2 x hz)
+
 lemma branches_monotone [PartialOrder act] [PartialOrder test]
     {α β : Lpofin (Label act test)} (hle : α ≤ β)
     {φ : PathCond α} (hφ : φ ∈ α.branches) : φ.up_cast hle ∈ β.branches := by
-  sorry
+  rcases hφ with ⟨htests, hstuck, hmax⟩
+  refine ⟨?_, ?_, ?_⟩
+  · intro x hx
+    rw [PathCond.cast_toForm]
+    exact (htests x hx).trans (le_form hle)
+  · intro v hφ hβstuck
+    apply hstuck v hφ
+    exact stuck_antitone hle v hβstuck
+  · intro x hx htest hnot hreach
+    have hxβ : x ∈ β.nodes := tests_sub_nodes htest
+    rcases isTest_of_le_or_bot hle htest with htestα | hbot
+    · have hxα : x ∈ α.nodes := tests_sub_nodes htestα
+      have hreachα := (reachableWith_isotone hle hxα).mpr hreach
+      by_cases hαstuck : α.form x ≤ α.stuck
+      · exact not_reachableWith_of_form_le_stuck hstuck hαstuck hreachα
+      · exact hmax hx htestα hαstuck hreachα
+    · rcases hle.succ x hxβ with hxα | ⟨y, ⟨hyα, hybot⟩, hyx⟩
+      · have hreachα := (reachableWith_isotone hle hxα).mpr hreach
+        apply not_reachableWith_of_form_le_stuck hstuck _ hreachα
+        intro v hxform
+        refine ⟨⟨x, hxα, hbot, ?_⟩, hxform⟩
+        exact reachable_of_reachableWith hreachα
+      · have hreachyβ : β.ReachableWith (φ.up_cast hle) y :=
+          reachableWith_pred hreach hyx
+        have hreachy : α.ReachableWith φ y :=
+          (reachableWith_isotone hle hyα).mpr hreachyβ
+        apply not_reachableWith_of_form_le_stuck hstuck _ hreachy
+        intro v hyform
+        refine ⟨⟨y, hyα, hybot, reachable_of_reachableWith hreachy⟩, hyform⟩
 
 lemma le_branches [PartialOrder act] [PartialOrder test] {α β : Lpofin (Label act test)}
-    (hle : α ≤ β) : α.branches = { φ | ∃ φ' ∈ β.branches, φ' = φ.up_cast hle ∧  φ.toForm ≤ α.stuck.not } := by
-  sorry
+    (hle : α ≤ β) : α.branches =
+      { φ | ∃ φ' ∈ β.branches, φ' = φ.up_cast hle ∧ φ.toForm ≤ α.stuck.not } := by
+  ext φ
+  constructor
+  · intro hφ
+    exact ⟨φ.up_cast hle, branches_monotone hle hφ, rfl, hφ.2.1⟩
+  · rintro ⟨φ', hφ', rfl, hstuck⟩
+    refine ⟨?_, hstuck, ?_⟩
+    · intro x hx
+      rw [← PathCond.cast_toForm (hle := hle)]
+      have himp := hφ'.1 x hx
+      conv at himp => rhs; exact (hle.form x (tests_sub_nodes (φ.tests_valid hx))).symm
+      exact himp
+    · intro x hx htest hnot hreach
+      have hxnode : x ∈ α.nodes := tests_sub_nodes htest
+      apply hφ'.2.2 hx
+      · obtain ⟨b, hb⟩ := (Label.isTest_iff _).mp htest
+        obtain ⟨c, hc, _⟩ := lab_is_test_le (le_of_eq_of_le hb.symm (hle.lab x))
+        exact (Label.isTest_iff _).mpr ⟨c, hc⟩
+      · intro hβ
+        apply hnot
+        intro v hα
+        apply stuck_antitone hle v
+        exact hβ v ((congrFun (hle.form x hxnode) v).mp hα)
+      · exact (reachableWith_isotone hle hxnode).mp hreach
+
+lemma pathCond_eq_of_tests_eq_of_common_sat {α : Lpofin (Label act test)}
+    {φ ψ : PathCond α} (htests : φ.tests = ψ.tests) {v : Set Node}
+    (hφ : φ.toForm v) (hψ : ψ.toForm v) : φ = ψ := by
+  rcases φ with ⟨s, f, hf⟩
+  rcases ψ with ⟨t, g, hg⟩
+  dsimp at htests
+  subst t
+  congr
+  funext x
+  apply Bool.eq_iff_iff.mpr
+  rw [PathCond.truth_iff_mem _ hφ, PathCond.truth_iff_mem _ hψ]
+
+lemma branch_tests_subset_of_common_sat {α : Lpofin (Label act test)}
+    {φ ψ : PathCond α} (hφ : φ ∈ α.branches) (hψ : ψ ∈ α.branches)
+    {v : Set Node} (hsatφ : φ.toForm v) (hsatψ : ψ.toForm v) :
+    φ.tests ⊆ ψ.tests := by
+  intro x hx
+  by_contra hnx
+  have htest : α.isTest x := φ.tests_valid hx
+  have hnstuck : ¬ (α.form x ≤ α.stuck) := by
+    intro hle
+    exact (hφ.2.1 v hsatφ) (hle v (hφ.1 x hx v hsatφ))
+  apply hψ.2.2 hnx htest hnstuck
+  let η := ψ.union φ
+  have hcompat {z} (hz : z ∈ ψ.tests ∩ φ.tests) :
+      ψ.truth ⟨z, hz.1⟩ = φ.truth ⟨z, hz.2⟩ := by
+    apply Bool.eq_iff_iff.mpr
+    rw [ψ.truth_iff_mem hsatψ, φ.truth_iff_mem hsatφ]
+  refine ⟨η, PathCond.le_union_left, ?_⟩
+  exact (PathCond.toForm_antitone (PathCond.le_union_right hcompat)).trans (hφ.1 x hx)
 
 lemma branches_not_mutually_sat {α : Lpofin (Label act test)} {φ ψ : PathCond α}
     (hφ : φ ∈ α.branches) (hψ : ψ ∈ α.branches) (hneq : φ ≠ ψ) :
     ∀ v, ¬ (φ.toForm v ∧ ψ.toForm v) := by
   intro v ⟨h₁, h₂⟩
-  obtain ⟨himp, hstuck, hmax⟩ := hφ
-  obtain ⟨himp', hstuck', hmax'⟩ := hψ
-  sorry
+  have hsub₁ := branch_tests_subset_of_common_sat hφ hψ h₁ h₂
+  have hsub₂ := branch_tests_subset_of_common_sat hψ hφ h₂ h₁
+  apply hneq
+  exact pathCond_eq_of_tests_eq_of_common_sat (Set.Subset.antisymm hsub₁ hsub₂) h₁ h₂
 
 end Lpofin
