@@ -1,4 +1,5 @@
 import Pom.Lpo.Operations.Seq
+import Pom.Lpo.Operations.Seq.Order
 import Pom.Lpo.Operations.Seq.Isomorphism
 import Pom.Order.Extension
 

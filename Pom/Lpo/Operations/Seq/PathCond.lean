@@ -159,7 +159,7 @@ lemma cast_toForm [Preorder act] [Preorder test] {α β : Lpofin (Label act test
 
 def permute {α : Lpofin (Label act test)} {Y : Set Node} (φ : PathCond α) (e : α.nodes ≃ Y) :
     PathCond (α.permute e) :=
-  let e' := e.restrict (φ.tests_valid.trans tests_sub_nodes)
+  let e' := Lpo.perm_subset e (φ.tests_valid.trans tests_sub_nodes)
   {
     tests := Set.range fun x ↦ (e' x).val
     truth := fun x ↦ φ.truth (e'.symm x)
@@ -172,7 +172,7 @@ def permute {α : Lpofin (Label act test)} {Y : Set Node} (φ : PathCond α) (e 
       refine (dif_pos ?_).trans ?_
       · exact Subtype.coe_prop _
       · conv => lhs; arg 2; arg 1; exact e.symm_apply_apply _
-        simp only [Equiv.restrict, Equiv.coe_fn_mk, e'] at heq
+        simp only [Lpo.perm_subset, Equiv.coe_fn_mk, e'] at heq
         apply Subtype.val_injective at heq
         apply e.injective at heq; simp only [Subtype.mk.injEq] at heq
         rw [heq]; exact hlab
