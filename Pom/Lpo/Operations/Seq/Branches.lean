@@ -174,13 +174,14 @@ lemma branches_monotone [PartialOrder act] [PartialOrder test]
         refine ⟨⟨y, hyα, hybot, hreachy⟩, hyform⟩
 
 lemma le_branches [PartialOrder act] [PartialOrder test] {α β : Lpofin (Label act test)}
-    (hle : α ≤ β) : α.branches =
-      { φ | ∃ φ' ∈ β.branches, φ' = φ.up_cast hle ∧ φ.toForm ≤ (α.stuck φ).not } := by
+    (hle : α ≤ β) :
+    α.branches =
+    { φ | φ.up_cast hle ∈ β.branches ∧ φ.toForm ≤ (α.stuck φ).not } := by
   ext φ
   constructor
   · intro hφ
-    exact ⟨φ.up_cast hle, branches_monotone hle hφ, rfl, hφ.2.1⟩
-  · rintro ⟨φ', hφ', rfl, hstuck⟩
+    exact ⟨branches_monotone hle hφ, hφ.2.1⟩
+  · rintro ⟨hφ', hstuck⟩
     refine ⟨?_, hstuck, ?_⟩
     · intro x hx
       rw [← PathCond.cast_toForm (hle := hle)]
