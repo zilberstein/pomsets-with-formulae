@@ -42,17 +42,23 @@ instance finite (α : Lpofin (Label act test)) : Finite (PathCond α) := by
     · exact heq.1
     · exact heq.2
 
-def empty {α : Lpofin (Label act test)} : PathCond α := {
+def empty (α : Lpofin (Label act test)) : PathCond α := {
   tests := ∅
   truth := fun ⟨_, h⟩ ↦ False.elim <| Set.notMem_empty _ h
   tests_valid := Set.empty_subset _
 }
 
 instance {α : Lpofin (Label act test)} : Bot (PathCond α) where
-  bot := empty
+  bot := empty α
 
 def toForm {α : Lpofin (Label act test)} (φ : PathCond α) : Form Node :=
   Form.sAnd fun x ↦ if φ.truth x then Form.literal x.val else (Form.literal x.val).not
+
+lemma empty_toForm (α : Lpofin (Label act test)) :
+    (empty α).toForm = Form.true := by
+  ext v; constructor
+  · intro _; trivial
+  · intro _ x; exfalso; exact Set.notMem_empty _ x.property
 
 def extend {α : Lpofin (Label act test)} (φ : PathCond α) {x : Node} (hx : α.isTest x) (b : Bool) :
     PathCond α := {

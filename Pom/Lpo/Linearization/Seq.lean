@@ -31,7 +31,7 @@ lemma sat_and_indep {α : Type} {p q : Form α} {s u : Set α}
 
 namespace Lpofin
 
-variable {act test : Type} [PartialOrder act] [PartialOrder test]
+variable {act test : Type}
 
 /-! ### Structural facts about `seq α β f`. -/
 /-- On the nodes of `α`, `seq α β f` has the same formula as `α`. -/
@@ -81,7 +81,6 @@ lemma seq_lab_copy (α β : Lpofin (Label act test)) (f : CopyFn α β) (φ : α
     exact Set.disjoint_left.mp ((f.property hex.choose).2.2 φ hc) hex.choose_spec hz
   rw [hchoose]
 
-omit [PartialOrder act] [PartialOrder test] in
 /-- The formula attached to a copy node depends only on the nodes of that copy. -/
 lemma copy_form_dependsOn (α β : Lpofin (Label act test)) (f : CopyFn α β)
     (φ : α.branches) {y : Node} (hy : y ∈ (f φ).nodes) :
@@ -198,7 +197,6 @@ variable {t : Type → Type} {s : Type}
 Mirror of `lin_rec_guard_right_aux`, using `seq_next_copy`, `seq_lab_copy`,
 `seq_lab_copy`, `seq_filter_copy`. -/
 
-omit [PartialOrder act] [PartialOrder test] in
 /-- The test literal accumulated at a copy node depends only on the nodes of that copy. -/
 lemma copy_literal_dependsOn (φ : α.branches) {y : Node} (hy : y ∈ (f φ).nodes) (rr : Bool) :
     (if rr then Form.literal y else (Form.literal y).not).DependsOn (f φ).nodes := by
@@ -272,7 +270,6 @@ noncomputable def active_branches (φ : PathCond α) : Finset ↑α.branches :=
       exact Set.toFinite _
     })
 
-omit [PartialOrder act] [PartialOrder test] in
 lemma mem_active (φ : PathCond α) (ψ : α.branches) :
     ψ ∈ α.active_branches φ ↔ φ ≤ ψ := by
   constructor
@@ -332,7 +329,6 @@ lemma seq_next_alpha
         · exact (f ψ).val.property.rel_dom hrel |>.2
         · exact hx
 
-omit [PartialOrder act] [PartialOrder test] in
 /-- Erasing an `α`-node from `seq_nodes` only affects the `α` part. -/
 lemma seq_erase_alpha (u : Finset Node) (φ : PathCond α) {x : Node} (hx : x ∈ α.nodes) :
     (α.seq_nodes β f u φ).erase x = α.seq_nodes β f (u.erase x) φ := by
@@ -343,7 +339,6 @@ lemma seq_erase_alpha (u : Finset Node) (φ : PathCond α) {x : Node} (hx : x �
   unfold seq_nodes
   rw [Finset.erase_union_distrib, Finset.erase_eq_of_notMem hxB]
 
-omit [PartialOrder act] [PartialOrder test] in
 /-- If `u` contains a reachable element, then the set of next nodes (which are ready
 to schedule) is nonempty. -/
 lemma next_nonempty
@@ -386,7 +381,7 @@ lemma active_branches_singleton
     -- path condition `φ`
     (hcomp : ∀ z ∈ α.tests, ∀ y ∈ u, α.rel z y → z ∉ u → z ∈ φ.tests)
     (hreach : ∀ z ∈ φ.tests, φ.toForm ≤ α.form z)
-    (hbr :
+        (hbr :
       -- The execution is stuck
       (∀ {v}, φ.toForm v →
         ∃ x ∈ u, α.form x v ∧ α.lab x = ⊥ ∧ α.ReachableWith φ x) ∨
@@ -395,7 +390,7 @@ lemma active_branches_singleton
         ∀ {x},
           x ∉ φ.tests →
           α.isTest x →
-          ¬ (α.form x ≤ α.stuck) →
+          ¬ (α.form x ≤ α.stuck φ) →
           α.ReachableWith φ x →
           x ∈ u))
     (hemp : α.next u φ.toForm = ∅) :
@@ -407,11 +402,9 @@ lemma active_branches_singleton
       have ⟨z, hz, _, _, hr⟩ := hstk hform
       exact α.next_nonempty u φ hu hcomp hz hr
     · refine ⟨hreach, ?_, ?_⟩
-      · intro v hform ⟨⟨x, hx, hbot, ψ, _, hr⟩, hxf⟩
+      · intro v hform ⟨⟨x, hx, hbot, hr⟩, hxf⟩
         refine Finset.nonempty_iff_ne_empty.mp ?_ hemp
-        refine α.next_nonempty u φ hu hcomp (hstuck x ⟨hx, hbot⟩ ?_) ?_; all_goals
-        refine ⟨ψ, ?_, hr⟩
-        sorry
+        exact α.next_nonempty u φ hu hcomp (hstuck x ⟨hx, hbot⟩ hr) hr
       · intro x hx hxt hnstk hr
         have hxu := hmax hx hxt hnstk hr
         have hne := α.next_nonempty u φ hu hcomp hxu hr
@@ -443,7 +436,7 @@ lemma lin_rec_seq
         ∀ {x},
           x ∉ φ.tests →
           α.isTest x →
-          ¬ (α.form x ≤ α.stuck) →
+          ¬ (α.form x ≤ α.stuck φ) →
           α.ReachableWith φ x →
           x ∈ u)) :
     (lin_rec (seq α β f) (seq_nodes α β f u φ) φ.toForm : s → t s) =
@@ -497,15 +490,14 @@ lemma lin_rec_seq
 lemma lin_seq :
     (lin (seq α β f) : s → t s) = fun σ ↦ lin α σ >>= lin β := by
   unfold lin
-  have hnodes : (α.seq β f).nodes_finset = α.seq_nodes β f α.nodes_finset PathCond.empty := sorry
-  have hform : Form.true = (@PathCond.empty _ _ α).toForm := sorry
-  rw [hnodes]; nth_rw 1 2 [hform]
-  refine α.lin_rec_seq β f _ PathCond.empty ?_ ?_ ?_ ?_
+  have hnodes : (α.seq β f).nodes_finset = α.seq_nodes β f α.nodes_finset ⊥ := sorry
+  rw [hnodes]; nth_rw 1 2 [← PathCond.empty_toForm]
+  refine α.lin_rec_seq β f _ ⊥ ?_ ?_ ?_ ?_
   · intro x hx; exact α.property.mem_toFinset.mp hx
   · intro z hz _ _ _ hz'; exfalso; apply hz'
     exact α.property.mem_toFinset.mpr <| tests_sub_nodes hz
   · intro z hz; exfalso; exact Set.notMem_empty _ hz
-  · by_cases hstk : ∀ v, α.stuck v
+  · by_cases hstk : ∀ v, α.stuck ⊥ v
     · left; intro v _; have ⟨⟨x, hx, hbot⟩, hform⟩ := hstk v
       refine ⟨x, ?_, hform, hbot⟩
       exact α.property.mem_toFinset.mpr hx

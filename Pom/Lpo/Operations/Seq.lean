@@ -175,7 +175,7 @@ lemma seq_valid (α β : Lpofin (Label act test)) (f : CopyFn α β) :
         intro ⟨ψ, hx⟩; exact Set.disjoint_left.mp (f.property ψ).2.1 hx' hx
       have := (dif_neg this).symm.trans hlab
       refine hstuck v hsat ⟨⟨x, hx', this, ?_⟩, hform⟩
-      exact ⟨φ, bot_le, hx⟩
+      exact ⟨φ, le_refl _, hx⟩
   -- Formula Domain
   · intro x; constructor
     · rintro ⟨_, hform | ⟨φ, hform, _⟩⟩
