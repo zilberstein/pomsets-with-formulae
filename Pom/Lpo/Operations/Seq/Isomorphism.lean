@@ -4,6 +4,101 @@ namespace Lpofin
 
 variable {act test : Type} [PartialOrder act] [PartialOrder test]
 
+lemma pathCond_permute_toForm {α : Lpofin (Label act test)} {Y : Set Node}
+    (φ : PathCond α) (e : α.nodes ≃ Y) :
+    (φ.permute e).toForm = φ.toForm.permute e := by
+  ext v
+  constructor
+  · intro h x
+    let er := Lpo.perm_subset e (φ.tests_valid.trans tests_sub_nodes)
+    have hx := h (er x)
+    change (if φ.truth (er.symm (er x)) then Form.literal (er x).val
+      else (Form.literal (er x).val).not) v at hx
+    rw [er.symm_apply_apply] at hx
+    by_cases ht : φ.truth x = true
+    · simp only [ht, if_true, Form.literal] at hx ⊢
+      refine ⟨e ⟨x, φ.tests_valid.trans tests_sub_nodes x.property⟩, ?_, hx⟩
+      exact congrArg Subtype.val (e.symm_apply_apply ⟨x,
+        φ.tests_valid.trans tests_sub_nodes x.property⟩)
+    · simp only [ht] at hx ⊢
+      rintro ⟨z, hz, hv⟩
+      apply hx
+      have heq : z = e ⟨x, φ.tests_valid.trans tests_sub_nodes x.property⟩ := by
+        apply e.symm.injective
+        ext
+        simpa only [Equiv.symm_apply_apply] using hz
+      rw [heq] at hv
+      exact hv
+  · intro h x
+    let er := Lpo.perm_subset e (φ.tests_valid.trans tests_sub_nodes)
+    let y : ↑φ.tests := er.symm x
+    have hy := h y
+    change (if φ.truth y then Form.literal y.val else (Form.literal y.val).not)
+      (Form.image v e.symm) at hy
+    change (if φ.truth (er.symm x) then Form.literal x.val else (Form.literal x.val).not) v
+    by_cases ht : φ.truth y = true
+    · have ht' : φ.truth (er.symm x) = true := ht
+      simp only [ht, if_true, Form.literal] at hy
+      simp only [ht', if_true, Form.literal]
+      rcases hy with ⟨z, hz, hv⟩
+      have hxY : x.val ∈ Y := (φ.permute e).tests_valid x.property |>
+        tests_sub_nodes
+      have heq : z = ⟨x.val, hxY⟩ := by
+        ext
+        calc
+          z.val = (e (e.symm z)).val :=
+            (congrArg Subtype.val (e.apply_symm_apply z)).symm
+          _ = (e ⟨y.val, φ.tests_valid.trans tests_sub_nodes y.property⟩).val := by
+            congr 2
+            exact Subtype.ext hz
+          _ = x.val := by
+            change (er y).val = x.val
+            exact congrArg Subtype.val (er.apply_symm_apply x)
+      rw [congrArg Subtype.val heq] at hv
+      exact hv
+    · have ht' : ¬ φ.truth (er.symm x) = true := ht
+      simp only [ht] at hy
+      simp only [ht']
+      intro hxv
+      apply hy
+      have hxY : x.val ∈ Y := (φ.permute e).tests_valid x.property |>
+        tests_sub_nodes
+      refine ⟨⟨x.val, hxY⟩, ?_, hxv⟩
+      calc
+        (e.symm ⟨x.val, hxY⟩).val = y.val := by
+          have hh := congrArg Subtype.val (er.apply_symm_apply x)
+          change (e ⟨y.val, φ.tests_valid.trans tests_sub_nodes y.property⟩).val = x.val at hh
+          have hs : e.symm ⟨x.val, hxY⟩ =
+              ⟨y.val, φ.tests_valid.trans tests_sub_nodes y.property⟩ := by
+            apply e.injective
+            ext
+            simpa only [e.apply_symm_apply] using hh.symm
+          exact congrArg Subtype.val hs
+        _ = y.val := rfl
+
+lemma pathCond_cast_toForm {α β : Lpofin (Label act test)}
+    (h : α = β) (φ : PathCond α) :
+    (h ▸ φ).toForm = φ.toForm := by
+  subst β
+  rfl
+
+lemma pathCond_permute_symm {α : Lpofin (Label act test)} {Y : Set Node}
+    (φ : PathCond α) (e : α.nodes ≃ Y)
+    (H : (α.permute e).permute e.symm = α) :
+    H ▸ (φ.permute e).permute e.symm = φ := by
+  sorry
+
+lemma reachableWith_permute {α : Lpofin (Label act test)} {Y : Set Node}
+    {φ : PathCond α} {e : α.nodes ≃ Y} {x : Node} (hx : x ∈ α.nodes) :
+    α.ReachableWith φ x ↔
+      (α.permute e).ReachableWith (φ.permute e) (e ⟨x, hx⟩).val := by
+  sorry
+
+lemma stuck_permute {α : Lpofin (Label act test)} {Y : Set Node} {φ : PathCond α}
+    (e : α.nodes ≃ Y) :
+    (α.stuck φ).permute e = (α.permute e).stuck (φ.permute e) := by
+  sorry
+
 lemma branches_permute {α α' : Lpofin (Label act test)} {e : α.nodes ≃ α'.nodes}
     (h : α.permute e = α') :
     ∀ φ ∈ α.branches, (h ▸ φ.permute e) ∈ α'.branches := by
@@ -32,13 +127,14 @@ def branches_equiv {α α' : Lpofin (Label act test)} {e : α.nodes ≃ α'.node
     (h : α.permute e = α') :
     α.branches ≃ α'.branches := {
   toFun φ := ⟨h ▸ φ.val.permute e, branches_permute h _ φ.property⟩
-  invFun φ := sorry
-  --   ⟨φ.val.permute e.symm, by {
-  --   refine branches_permute ?_ _ φ.property
-  --   refine Subtype.ext ?_; symm; refine (Lpo.permute_symm ?_)
-  --   conv => rhs; arg 1; exact h.symm
-  --   rfl
-  -- }⟩
+  invFun φ :=
+    let H : α'.permute e.symm = α := by
+      refine Subtype.ext ?_
+      symm
+      refine Lpo.permute_symm ?_
+      conv => rhs; arg 1; exact h.symm
+      rfl
+    ⟨H ▸ φ.val.permute e.symm, branches_permute H _ φ.property⟩
   left_inv := by sorry
     -- rintro ⟨_, ⟨t, ht, f, rfl, _⟩⟩
     -- have h (x : ↑t) := (α.val.property.form _ (tests_sub_nodes <| ht x.property)).1
@@ -56,6 +152,16 @@ def branches_equiv {α α' : Lpofin (Label act test)} {e : α.nodes ≃ α'.node
     --   intro x hx; exact tests_sub_nodes <| ht hx
     -- rw [Form.permute_trans _ _ _ hdep, e.symm_trans_self, Form.permute_refl _ hdep]
     }
+
+lemma branches_equiv_toForm {α α' : Lpofin (Label act test)}
+    {e : α.nodes ≃ α'.nodes} (he : α.val.permute e = α'.val)
+    (φ : α.branches) :
+    (branches_equiv (Subtype.ext he) φ).val.toForm =
+      φ.val.toForm.permute e := by
+  let H : α.permute e = α' := Subtype.ext he
+  change (H ▸ φ.val.permute e).toForm = _
+  rw [pathCond_cast_toForm H]
+  exact pathCond_permute_toForm φ.val e
 
 lemma form_imp_permute {l : Type} [Bot l]
     {a : Lpofin l} {Y : Set Node} {e : a.nodes ≃ Y} {φ : Form Node} {x : Node}
@@ -140,32 +246,27 @@ lemma seq_iso_rel {α α' β β' : Lpofin (Label act test)} {f : CopyFn α β} {
                 · exact Subtype.coe_prop _
                 · refine φ.val.dependsOn.monotone _ ?_
                   exact φ.val.tests_valid.trans tests_sub_nodes
-                · sorry
-                  -- refine forall_congr' fun v ↦ imp_congr ?_ ?_
-                  -- · exact Iff.refl _
-                  -- · conv => lhs; arg 2; arg 1; exact e.apply_symm_apply _
-                  --   unfold form; conv => rhs; arg 1; exact he.symm
-                  --   exact Iff.refl _
+                · refine forall_congr' fun v ↦ imp_congr ?_ ?_
+                  · change φ.val.toForm.permute e v ↔
+                      (branches_equiv (Subtype.ext he) φ).val.toForm v
+                    rw [branches_equiv_toForm he φ]
+                    exact Iff.rfl
+                  · conv => lhs; arg 2; arg 1; exact e.apply_symm_apply _
+                    unfold form; conv => rhs; arg 1; exact he.symm
+                    exact Iff.refl _
               · conv => lhs; rhs; arg 2; exact Equiv.union_symm_apply_right hx
                 obtain ⟨_, ⟨ψ, rfl⟩, hx⟩ := hx
                 conv => lhs; rhs; arg 2; exact Equiv.iUnion_symm_apply hx (e := eb)
                 constructor
                 · intro himp v h; exfalso
-                  sorry
-                  -- have := (α.val.property.form_dom _).mp ⟨_, himp _ h⟩
-                  -- refine Set.disjoint_right.mp (f.property (eb.symm ψ)).2.1 ?_ this
-                  -- exact Subtype.coe_prop _
+                  obtain ⟨u, hu⟩ := φ.val.sat
+                  have hn := (α.val.property.form_dom _).mp ⟨_, himp u hu⟩
+                  refine Set.disjoint_right.mp (f.property (eb.symm ψ)).2.1 ?_ hn
+                  exact Subtype.coe_prop _
                 · intro himp v h; exfalso
                   refine Set.disjoint_right.mp (g.property ψ).2.1 hx ?_
-                  refine (α'.val.property.form_dom _).mp ⟨Form.image v e, himp _ ?_⟩
-                  simp only [branches_equiv, Equiv.coe_fn_mk, Form.permute, eb]
-                  sorry
-                  -- conv => arg 2; exact Form.image_inv v e
-                  -- refine (branch_depends_on φ.property _ _ ?_).mp h
-                  -- apply Set.disjoint_left.mpr fun y hy hy' ↦ ?_
-                  -- rcases Set.mem_symmDiff.mp hy with ⟨hv, hv'⟩ | ⟨hv, hv'⟩
-                  -- · exact hv' ⟨hv, hy'⟩
-                  -- · exact hv' hv.1
+                  obtain ⟨u, hu⟩ := (eb φ).val.sat
+                  exact (α'.val.property.form_dom _).mp ⟨u, himp u hu⟩
             · constructor
               · intro h;
                 have := Set.subset_iUnion (fun φ ↦ (f φ).nodes) φ h
@@ -326,42 +427,50 @@ lemma seq_iso_form_base {α α' β β' : Lpofin (Label act test)} {f : CopyFn α
     rw [heq]
     exact Subtype.coe_prop _
   rw [eq_iff_iff]
-  sorry
-  -- simp only [hx, if_pos]
-  -- constructor
-  -- · rintro ⟨_, hv⟩
-  --   split at hv
-  --   · have heq := Equiv.union_symm_apply_left (e₁ := e) (e₂ := e')
-  --       (h₁ := hd1) (h₂ := hd2) hx
-  --     have hdep := α.val.property.form _ (e.symm ⟨x, hx⟩).property |>.1
-  --     have hdep' := Form.DependsOn.monotone _
-  --       (fun y hy ↦ α.val.property.rel_dom hy |>.1) hdep
-  --     have hformeq := congrArg α.val.val.form heq
-  --     have hpermeq := congrArg
-  --       (fun φ : Form Node ↦ φ.permute (Equiv.union e e' hd1 hd2) v) hformeq
-  --     have hv := hpermeq.mp hv
-  --     have hp := congrArg (fun a : Lpo _ ↦ a.form x v) he
-  --     simp only [Lpo.permute, Lpo.form] at hp
-  --     exact hp.mp ⟨hx, congrFun (form_permute_union_left e e' hd1 hd2 hdep') v |>.mp hv⟩
-  --   · contradiction
-  -- · intro hv
-  --   refine ⟨Set.subset_union_left hx, ?_⟩
-  --   split
-  --   · have heq := Equiv.union_symm_apply_left (e₁ := e) (e₂ := e')
-  --       (h₁ := hd1) (h₂ := hd2) hx
-  --     have hp := congrArg (fun a : Lpo _ ↦ a.form x v) he
-  --     simp only [Lpo.permute, Lpo.form] at hp
-  --     have hdep := α.val.property.form _ (e.symm ⟨x, hx⟩).property |>.1
-  --     have hdep' := Form.DependsOn.monotone _
-  --       (fun y hy ↦ α.val.property.rel_dom hy |>.1) hdep
-  --     have hformeq := congrArg α.val.val.form heq
-  --     have hpermeq := congrArg
-  --       (fun φ : Form Node ↦ φ.permute (Equiv.union e e' hd1 hd2) v) hformeq
-  --     apply hpermeq.symm.mp
-  --     apply congrFun (form_permute_union_left e e' hd1 hd2 hdep') v |>.mpr
-  --     simp only [eq_iff_iff] at hp
-  --     exact (hp.mpr hv).choose_spec
-  --   · contradiction
+  constructor
+  · rintro ⟨_, hv⟩
+    simp only [Form.permute] at hv
+    rcases hv with hv | hv
+    · have heq := Equiv.union_symm_apply_left (e₁ := e) (e₂ := e')
+        (h₁ := hd1) (h₂ := hd2) hx
+      have hdep := α.val.property.form _ (e.symm ⟨x, hx⟩).property |>.1
+      have hdep' := Form.DependsOn.monotone _
+        (fun y hy ↦ α.val.property.rel_dom hy |>.1) hdep
+      have hformeq := congrArg α.val.val.form heq
+      have hpermeq := congrArg
+        (fun φ : Form Node ↦ φ.permute (Equiv.union e e' hd1 hd2) v) hformeq
+      have hv := hpermeq.mp hv
+      have hp := congrArg (fun a : Lpo _ ↦ a.form x v) he
+      simp only [Lpo.permute, Lpo.form] at hp
+      left
+      exact hp.mp ⟨hx, congrFun (form_permute_union_left e e' hd1 hd2 hdep') v |>.mp hv⟩
+    · rcases hv with ⟨η, hη, _⟩
+      exfalso
+      have hn := ((f η).val.property.form_dom _).mp ⟨_, hη⟩
+      exact Set.disjoint_left.mp (f.property η).2.1 hpre hn
+  · intro hv
+    rcases hv with hv | hv
+    · refine ⟨Set.subset_union_left hx, ?_⟩
+      simp only [Form.permute]
+      left
+      have heq := Equiv.union_symm_apply_left (e₁ := e) (e₂ := e')
+        (h₁ := hd1) (h₂ := hd2) hx
+      have hp := congrArg (fun a : Lpo _ ↦ a.form x v) he
+      simp only [Lpo.permute, Lpo.form] at hp
+      have hdep := α.val.property.form _ (e.symm ⟨x, hx⟩).property |>.1
+      have hdep' := Form.DependsOn.monotone _
+        (fun y hy ↦ α.val.property.rel_dom hy |>.1) hdep
+      have hformeq := congrArg α.val.val.form heq
+      have hpermeq := congrArg
+        (fun φ : Form Node ↦ φ.permute (Equiv.union e e' hd1 hd2) v) hformeq
+      apply hpermeq.symm.mp
+      apply congrFun (form_permute_union_left e e' hd1 hd2 hdep') v |>.mpr
+      simp only [eq_iff_iff] at hp
+      exact (hp.mpr hv).choose_spec
+    · rcases hv with ⟨η, hη, _⟩
+      exfalso
+      have hn := ((g η).val.property.form_dom _).mp ⟨_, hη⟩
+      exact Set.disjoint_left.mp (g.property η).2.1 hx hn
 
 lemma seq_iso_form_copy {α α' β β' : Lpofin (Label act test)} {f : CopyFn α β} {g : CopyFn α' β'}
     {e : α.val.nodes ≃ α'.val.nodes} (he : α.val.permute e = α'.val)
@@ -412,68 +521,73 @@ lemma seq_iso_form_copy {α α' β β' : Lpofin (Label act test)} {f : CopyFn α
   rw [eq_iff_iff]
   constructor
   · rintro ⟨_, hleft⟩
-    sorry
-    -- split at hleft
-    -- · contradiction
-    -- split
-    -- · contradiction
-    -- rcases hleft with ⟨η, hη, hφ⟩
-    -- have hηnode := ((f η).val.property.form_dom _).mp ⟨_, hη⟩
-    -- have hηeq : η = φ := by
-    --   by_contra hne
-    --   exact Set.disjoint_left.mp ((f.property η).2.2 φ hne) hηnode hxpre
-    -- subst hηeq
-    -- refine ⟨eb φ, ?_, ?_⟩
-    -- · have hform := congrArg (fun a : Lpofin _ ↦ a.form x v) (h φ)
-    --   simp only [Lpofin.permute, Lpofin.form, Lpo.permute, Lpo.form] at hform
-    --   apply hform.mp
-    --   refine ⟨hxψ', ?_⟩
-    --   have hdep := (f φ).val.property.form _ ((eφ φ).symm ⟨x, hxψ'⟩).property
-    --   apply congrFun (form_permute_iUnion
-    --     (fun i j hn ↦ (f.property i).2.2 j hn)
-    --     (fun i j hn ↦ (g.property i).2.2 j hn) eb eφ φ
-    --     (Form.DependsOn.monotone _ (fun y hy ↦ (f φ).val.property.rel_dom hy |>.1) hdep.1)) v |>.mp
-    --   apply congrFun (form_permute_union_right e e' hd1 hd2
-    --     (Form.DependsOn.monotone _ (Set.subset_iUnion (fun η ↦ (f η).nodes) φ)
-    --       (Form.DependsOn.monotone _ (fun y hy ↦ (f φ).val.property.rel_dom hy |>.1)
-    --         hdep.1))) v |>.mp
-    --   exact (congrFun (congrArg (f φ).val.val.form hpoint)
-    --     (Form.image v (Equiv.union e e' hd1 hd2).symm)).mp hη
-    -- · exact congrFun (form_permute_union_left e e' hd1 hd2
-    --     (branch_depends_on φ.property)) v |>.mp hφ
+    simp only [Form.permute] at hleft
+    rcases hleft with hleft | hleft
+    · exact (hnα (((α.val.property.form_dom _).mp ⟨_, hleft⟩))).elim
+    rcases hleft with ⟨η, hη, hφ⟩
+    have hηnode := ((f η).val.property.form_dom _).mp ⟨_, hη⟩
+    have hηeq : η = φ := by
+      by_contra hne
+      exact Set.disjoint_left.mp ((f.property η).2.2 φ hne) hηnode hxpre
+    subst hηeq
+    right
+    refine ⟨eb φ, ?_, ?_⟩
+    · have hform := congrArg (fun a : Lpofin _ ↦ a.form x v) (h φ)
+      simp only [Lpofin.permute, Lpofin.form, Lpo.permute, Lpo.form] at hform
+      apply hform.mp
+      refine ⟨hxψ', ?_⟩
+      have hdep := (f φ).val.property.form _ ((eφ φ).symm ⟨x, hxψ'⟩).property
+      apply congrFun (form_permute_iUnion
+        (fun i j hn ↦ (f.property i).2.2 j hn)
+        (fun i j hn ↦ (g.property i).2.2 j hn) eb eφ φ
+        (Form.DependsOn.monotone _ (fun y hy ↦ (f φ).val.property.rel_dom hy |>.1) hdep.1)) v |>.mp
+      apply congrFun (form_permute_union_right e e' hd1 hd2
+        (Form.DependsOn.monotone _ (Set.subset_iUnion (fun η ↦ (f η).nodes) φ)
+          (Form.DependsOn.monotone _ (fun y hy ↦ (f φ).val.property.rel_dom hy |>.1)
+            hdep.1))) v |>.mp
+      exact (congrFun (congrArg (f φ).val.val.form hpoint)
+        (Form.image v (Equiv.union e e' hd1 hd2).symm)).mp hη
+    · have hdep : φ.val.toForm.DependsOn α.nodes :=
+        φ.val.dependsOn.monotone _
+          (φ.val.tests_valid.trans tests_sub_nodes)
+      have hp := congrFun (form_permute_union_left e e' hd1 hd2 hdep) v
+      change φ.val.toForm.permute (Equiv.union e e' hd1 hd2) v at hφ
+      rw [hp] at hφ
+      exact congrFun (branches_equiv_toForm he φ) v |>.symm.mp hφ
   · intro hright
-    sorry
-    -- split at hright
-    -- · contradiction
-    -- rcases hright with ⟨η, hη, hbranch⟩
-    -- refine ⟨Set.subset_union_right hxU, ?_⟩
-    -- split
-    -- · contradiction
-    -- have hηnode := ((g η).val.property.form_dom _).mp ⟨_, hη⟩
-    -- have hηeq : η = ψ := by
-    --   by_contra hne
-    --   exact Set.disjoint_left.mp ((g.property η).2.2 ψ hne) hηnode hxψ
-    -- subst hηeq
-    -- rw [← hψ] at hη hbranch
-    -- refine ⟨φ, ?_, ?_⟩
-    -- · have hdep := (f φ).val.property.form _ ((eφ φ).symm ⟨x, hxψ'⟩).property
-    --   apply (congrFun (congrArg (f φ).val.val.form hpoint)
-    --     (Form.image v (Equiv.union e e' hd1 hd2).symm)).mpr
-    --   apply congrFun (form_permute_union_right e e' hd1 hd2
-    --     (Form.DependsOn.monotone _ (Set.subset_iUnion (fun η ↦ (f η).nodes) φ)
-    --       (Form.DependsOn.monotone _ (fun y hy ↦ (f φ).val.property.rel_dom hy |>.1)
-    --         hdep.1))) v |>.mpr
-    --   apply congrFun (form_permute_iUnion
-    --     (fun i j hn ↦ (f.property i).2.2 j hn)
-    --     (fun i j hn ↦ (g.property i).2.2 j hn) eb eφ φ
-    --     (Form.DependsOn.monotone _ (fun y hy ↦ (f φ).val.property.rel_dom hy |>.1)
-    --       hdep.1)) v |>.mpr
-    --   have hform := congrArg (fun a : Lpofin _ ↦ a.form x v) (h φ)
-    --   simp only [Lpofin.permute, Lpofin.form, Lpo.permute, Lpo.form] at hform
-    --   exact (hform.mpr hη).choose_spec
-    -- · apply congrFun (form_permute_union_left e e' hd1 hd2
-    --     (branch_depends_on φ.property)) v |>.mpr
-    --   exact hbranch
+    rcases hright with hright | hright
+    · exact (hnxα (((α'.val.property.form_dom _).mp ⟨_, hright⟩))).elim
+    rcases hright with ⟨η, hη, hbranch⟩
+    refine ⟨Set.subset_union_right hxU, ?_⟩
+    simp only [Form.permute]
+    right
+    have hηnode := ((g η).val.property.form_dom _).mp ⟨_, hη⟩
+    have hηeq : η = ψ := by
+      by_contra hne
+      exact Set.disjoint_left.mp ((g.property η).2.2 ψ hne) hηnode hxψ
+    subst hηeq
+    rw [← hψ] at hη hbranch
+    refine ⟨φ, ?_, ?_⟩
+    · have hdep := (f φ).val.property.form _ ((eφ φ).symm ⟨x, hxψ'⟩).property
+      apply (congrFun (congrArg (f φ).val.val.form hpoint)
+        (Form.image v (Equiv.union e e' hd1 hd2).symm)).mpr
+      apply congrFun (form_permute_union_right e e' hd1 hd2
+        (Form.DependsOn.monotone _ (Set.subset_iUnion (fun η ↦ (f η).nodes) φ)
+          (Form.DependsOn.monotone _ (fun y hy ↦ (f φ).val.property.rel_dom hy |>.1)
+            hdep.1))) v |>.mpr
+      apply congrFun (form_permute_iUnion
+        (fun i j hn ↦ (f.property i).2.2 j hn)
+        (fun i j hn ↦ (g.property i).2.2 j hn) eb eφ φ
+        (Form.DependsOn.monotone _ (fun y hy ↦ (f φ).val.property.rel_dom hy |>.1)
+          hdep.1)) v |>.mpr
+      have hform := congrArg (fun a : Lpofin _ ↦ a.form x v) (h φ)
+      simp only [Lpofin.permute, Lpofin.form, Lpo.permute, Lpo.form] at hform
+      exact (hform.mpr hη).choose_spec
+    · have hdep : φ.val.toForm.DependsOn α.nodes :=
+        φ.val.dependsOn.monotone _
+          (φ.val.tests_valid.trans tests_sub_nodes)
+      apply congrFun (form_permute_union_left e e' hd1 hd2 hdep) v |>.mpr
+      exact congrFun (branches_equiv_toForm he φ) v |>.mp hbranch
 
 lemma seq_iso_form {α α' β β' : Lpofin (Label act test)} {f : CopyFn α β} {g : CopyFn α' β'}
     {e : α.val.nodes ≃ α'.val.nodes} (he : α.val.permute e = α'.val)
