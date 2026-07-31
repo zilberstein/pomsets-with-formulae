@@ -221,35 +221,28 @@ lemma branch_old_tests_bot_predecessor (hle : α ≤ α') (φ : PathCond α)
     ∃ z ∈ α.val.bots, φ.toForm ≤ α'.form z := by
   have ⟨_, himp⟩ := not_forall.mp hnot
   have ⟨_, hnn⟩ := Classical.not_imp.mp himp
-  have ⟨⟨z, hz, hbot, ψ, hext, himp⟩, hform⟩ := not_not.mp hnn
+  have ⟨⟨z, hz, hbot, hr⟩, hform⟩ := not_not.mp hnn
   refine ⟨z, ⟨hz, hbot⟩, ?_⟩
   -- Construct `ψ'` to be a minimal reachability witness
-  let ψ' := ψ.restrict (φ.tests ∪ { y | α.rel y z})
-  have himp' : ψ'.toForm ≤ α.form z := by
-    refine PathCond.implies_weaken (ψ.restrict_le _) himp ?_
-    refine (α.val.property.form _ hz).1.monotone _ ?_
-    intro y hrel ⟨hy, hy'⟩; refine hy' ⟨hy, Or.inr hrel⟩
-  have hext' : φ ≤ ψ' := by
-    constructor
-    · intro y; refine hext.2 y
-    · intro y hy; exact ⟨hext.1 hy, Or.inl hy⟩
-  by_cases heq : φ.tests = ψ'.tests
-  · have ⟨v, hsat⟩ := ψ'.sat
+  have ⟨ψ, hext, himp, hmin⟩ := hr.minimal hz
+  by_cases heq : φ.tests = ψ.tests
+  · have ⟨v, hsat⟩ := ψ.sat
     have heq :=
-      pathCond_eq_of_tests_eq_of_common_sat heq (PathCond.toForm_antitone hext' _ hsat) hsat
+      pathCond_eq_of_tests_eq_of_common_sat heq (PathCond.toForm_antitone hext _ hsat) hsat
     rw [heq]; conv => rhs; exact (hle.form _ hz).symm
-    exact himp'
-  · exfalso; have ⟨himp, hstk, hmax⟩ := hφ
-    have ⟨_, y, hy, hy'⟩ := ssubset_of_ne_of_subset heq hext'.1 |> Set.ssubset_iff_exists.mp
-    have hyz : α.rel y z := Or.resolve_left hy.2 hy'
-    have hzy := (α.val.property.form _ (tests_sub_nodes <| ψ'.tests_valid hy)).2 z hyz
+    exact himp
+  · exfalso; have ⟨_, hstk, hmax⟩ := hφ
+    have ⟨_, y, hy, hy'⟩ := ssubset_of_ne_of_subset heq hext.1 |> Set.ssubset_iff_exists.mp
+    have hyz : α.rel y z := Or.resolve_left (hmin _ hy) hy'
+    have hzy := (α.val.property.form _ (tests_sub_nodes <| ψ.tests_valid hy)).2 z hyz
     refine hmax hy' ?_ ?_ ?_
-    · exact (ψ'.up_cast hle).tests_valid hy
-    · intro h; have ⟨v, hv⟩ := ψ'.sat
-      apply hstk v <| PathCond.toForm_antitone hext' _ hv
-      refine h v ?_; exact himp' _ hv |> hzy _ |> le_form hle _
-    · refine ⟨ψ'.up_cast hle, hext', ?_⟩
-      exact himp'.trans <| hzy.trans <| le_form hle
+    · exact (ψ.up_cast hle).tests_valid hy
+    · intro h; have ⟨v, hv⟩ := ψ.sat
+      apply hstk v <| PathCond.toForm_antitone hext _ hv
+      refine h v ?_
+      exact himp _ hv |> hzy _ |> le_form hle _
+    · refine ⟨ψ.up_cast hle, hext, ?_⟩
+      exact himp.trans <| hzy.trans <| le_form hle
 
 lemma branch_lift_or_bot_predecessor (hle : α ≤ α') (φ : ↑α'.branches) :
     (∃ ψ : ↑α.branches, ψ.val.up_cast hle = φ.val) ∨

@@ -6,11 +6,27 @@ variable {act test : Type}
 
 def ReachableWith (α : Lpofin (Label act test)) (φ : PathCond α) (x : Node) : Prop :=
   ∃ ψ : PathCond α, φ ≤ ψ ∧
-    --(∀ z ∈ ψ.tests, α.rel z x) ∧
     ψ.toForm ≤ α.form x
 
-def Reachable (α : Lpofin (Label act test)) : Node → Prop :=
-  α.ReachableWith ⊥
+namespace ReachableWith
+
+lemma minimal {α : Lpofin (Label act test)} {φ : PathCond α}
+    {x : Node} (hx : x ∈ α.nodes) (hr : α.ReachableWith φ x) :
+    ∃ ψ, φ ≤ ψ ∧ ψ.toForm ≤ α.form x ∧
+      ∀ z ∈ ψ.tests, z ∈ φ.tests ∨ α.rel z x := by
+  have ⟨ψ, hext, himp⟩ := hr
+  -- Construct `ψ'` to be a minimal reachability witness
+  use ψ.restrict (φ.tests ∪ { y | α.rel y x})
+  refine ⟨?_, ?_, ?_⟩
+  · constructor
+    · intro y; refine hext.2 y
+    · intro y hy; exact ⟨hext.1 hy, Or.inl hy⟩
+  · refine PathCond.implies_weaken (ψ.restrict_le _) himp ?_
+    refine (α.val.property.form _ hx).1.monotone _ ?_
+    intro y hrel ⟨hy, hy'⟩; refine hy' ⟨hy, Or.inr hrel⟩
+  · intro z ⟨_, hz⟩; exact hz
+
+end ReachableWith
 
 lemma reachable_isotone [Preorder act] [Preorder test] {α β : Lpofin (Label act test)}
     {φ : PathCond α} (hle : α ≤ β)
@@ -204,14 +220,10 @@ lemma le_branches [PartialOrder act] [PartialOrder test] {α β : Lpofin (Label 
 lemma pathCond_eq_of_tests_eq_of_common_sat {α : Lpofin (Label act test)}
     {φ ψ : PathCond α} (htests : φ.tests = ψ.tests) {v : Set Node}
     (hφ : φ.toForm v) (hψ : ψ.toForm v) : φ = ψ := by
-  rcases φ with ⟨s, f, hf⟩
-  rcases ψ with ⟨t, g, hg⟩
-  dsimp at htests
-  subst t
-  congr
-  funext x
-  apply Bool.eq_iff_iff.mpr
-  rw [PathCond.truth_iff_mem _ hφ, PathCond.truth_iff_mem _ hψ]
+  have ⟨s, f, hf⟩ := φ
+  have ⟨t, g, hg⟩ := ψ
+  dsimp at htests; subst t; congr
+  funext x; exact PathCond.truth_eq_of_common_sat hφ hψ x.property x.property
 
 lemma branch_tests_subset_of_common_sat {α : Lpofin (Label act test)}
     {φ ψ : PathCond α} (hφ : φ ∈ α.branches) (hψ : ψ ∈ α.branches)

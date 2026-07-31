@@ -70,6 +70,21 @@ def extend {α : Lpofin (Label act test)} (φ : PathCond α) {x : Node} (hx : α
     · exact φ.tests_valid hz
 }
 
+lemma extend_toForm {α : Lpofin (Label act test)} (φ : PathCond α) {x : Node} (hx : α.isTest x)
+    (b : Bool) (h : x ∉ φ.tests) :
+    (φ.extend hx b).toForm = φ.toForm.and (if b then Form.literal x else (Form.literal x).not) := by
+  have hxf : (φ.extend hx b).truth ⟨x, Set.mem_insert _ _⟩ = b := dif_pos rfl
+  have hyf (y : ↑φ.tests) :
+      (φ.extend hx b).truth ⟨y.val, Set.mem_insert_of_mem x y.property⟩ = φ.truth y := by
+    apply dif_neg; rintro rfl; exact h y.property
+  ext v; constructor
+  · intro hform; constructor
+    · intro z; rw [← hyf z]; exact hform ⟨z.val, Set.mem_insert_of_mem x z.property⟩
+    · rw [← hxf]; exact hform ⟨x, Set.mem_insert _ _⟩
+  · rintro ⟨hform, hform'⟩ ⟨z, rfl | hz⟩
+    · rw [hxf]; exact hform'
+    · rw [hyf ⟨z, hz⟩]; exact hform ⟨z, hz⟩
+
 open Classical in
 noncomputable def union {α : Lpofin (Label act test)} (φ ψ : PathCond α) : PathCond α := {
   tests := φ.tests ∪ ψ.tests
@@ -134,6 +149,13 @@ lemma truth_iff_mem {α : Lpofin (Label act test)} (φ : PathCond α) {v : Set N
   · intro h; exact hsat x |> (congrFun (if_pos h) _).mp
   · intro h; by_contra ht
     apply hsat x |> (congrFun (if_neg ht) _).mp; exact h
+
+lemma truth_eq_of_common_sat {α : Lpofin (Label act test)}
+    {φ ψ : PathCond α} {v : Set Node} (hφ : φ.toForm v) (hψ : ψ.toForm v)
+    {x : Node} (hxφ : x ∈ φ.tests) (hxψ : x ∈ ψ.tests) :
+    φ.truth ⟨x, hxφ⟩ = ψ.truth ⟨x, hxψ⟩ := by
+  apply Bool.eq_iff_iff.mpr
+  rw [PathCond.truth_iff_mem _ hφ, PathCond.truth_iff_mem _ hψ]
 
 lemma dependsOn {α : Lpofin (Label act test)} (φ : PathCond α) : φ.toForm.DependsOn φ.tests := by
   rw [← Set.iUnion_of_singleton_coe φ.tests]
