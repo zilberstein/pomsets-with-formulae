@@ -296,4 +296,118 @@ noncomputable def seq (α β : Lpofin (Label act test)) (f : CopyFn α β) :
   property := seq_nodes_finite
 }
 
+/-! ### Structural facts about `seq α β f`. -/
+/-- On the nodes of `α`, `seq α β f` has the same formula as `α`. -/
+lemma seq_form_alpha (α β : Lpofin (Label act test)) (f : CopyFn α β) {x : Node}
+    (hx : x ∈ α.nodes) : (seq α β f).form x = α.form x := by
+  ext v; constructor
+  · rintro (hform | ⟨φ, hform, _⟩)
+    · exact hform
+    · exfalso
+      refine Set.disjoint_left.mp (f.property φ).2.1 hx ?_
+      exact ((f φ).val.property.form_dom x).mp ⟨_, hform⟩
+  · exact Or.inl
+
+lemma seq_rel_copy {α β : Lpofin (Label act test)} {f : CopyFn α β} {x y : Node} {φ : α.branches}
+    (hx : x ∈ (f φ).nodes) (hy : y ∈ (f φ).nodes) (hrel : (seq α β f).rel x y) : (f φ).rel x y := by
+  rcases hrel with hrel | ⟨ψ, h⟩
+  · exfalso; apply Set.disjoint_right.mp (f.property φ).2.1 hx
+    exact α.val.property.rel_dom hrel |>.1
+  · by_cases heq : φ = ψ
+    · subst heq; rcases h with hrel | ⟨himp, _⟩
+      · exact hrel
+      · exfalso; apply Set.disjoint_right.mp (f.property φ).2.1 hx
+        apply (α.val.property.form_dom x).mp
+        have ⟨v, hφ⟩ := φ.val.sat
+        exact ⟨v, himp _ hφ⟩
+    · exfalso; apply Set.disjoint_left.mp ((f.property φ).2.2 _ heq) hy
+      rcases h with hrel | ⟨_, hy'⟩
+      · exact (f ψ).val.property.rel_dom hrel |>.2
+      · exact hy'
+
+/-- On the nodes of `α`, `seq α β f` has the same label as `α`. -/
+lemma seq_lab_alpha (α β : Lpofin (Label act test)) (f : CopyFn α β) {x : Node} (hx : x ∈ α.nodes) :
+    (seq α β f).lab x = α.lab x := by
+  have hf : ¬ ∃ φ : α.branches, x ∈ (f φ).nodes := by
+    rintro ⟨φ, hφ⟩; exact Set.disjoint_left.mp (f.property φ).2.1 hx hφ
+  simp only [seq, lab, Lpo.lab, seq_base, dif_neg hf]
+
+/-- On the nodes of a copy `f φ`, the `seq` formula is the copy formula conjoined with the
+branch condition `φ`. -/
+lemma seq_form_copy (α β : Lpofin (Label act test)) (f : CopyFn α β) (φ : α.branches) {z : Node}
+    (hz : z ∈ (f φ).nodes) :
+    (seq α β f).form z = ((f φ).form z).and φ.val.toForm := by
+  have hz' : z ∉ α.nodes := Set.disjoint_right.mp (f.property φ).2.1 hz
+  ext v; constructor
+  · rintro (hform | ⟨ψ, hform, hψ⟩)
+    · exfalso
+      refine Set.disjoint_right.mp (f.property φ).2.1 hz ?_
+      exact (α.val.property.form_dom z).mp ⟨_, hform⟩
+    · have : φ = ψ := by
+        by_contra hc
+        exact Set.disjoint_left.mp ((f.property φ).2.2 ψ hc) hz
+          (((f ψ).val.property.form_dom z).mp ⟨v, hform⟩)
+      subst this; exact ⟨hform, hψ⟩
+  · intro hform; right; exact ⟨φ, hform⟩
+
+/-- On the nodes of a copy `f φ`, the `seq` label agrees with the copy label. -/
+lemma seq_lab_copy (α β : Lpofin (Label act test)) (f : CopyFn α β) (φ : α.branches) {z : Node}
+    (hz : z ∈ (f φ).nodes) :
+    (seq α β f).lab z = (f φ).lab z := by
+  have hex : ∃ ψ : α.branches, z ∈ (f ψ).nodes := ⟨φ, hz⟩
+  simp only [seq, lab, Lpo.lab, seq_base, dif_pos hex]
+  have hchoose : hex.choose = φ := by
+    by_contra hc
+    exact Set.disjoint_left.mp ((f.property hex.choose).2.2 φ hc) hex.choose_spec hz
+  rw [hchoose]
+
+/-- The formula attached to a copy node depends only on the nodes of that copy. -/
+lemma copy_form_dependsOn (α β : Lpofin (Label act test)) (f : CopyFn α β)
+    (φ : α.branches) {y : Node} (hy : y ∈ (f φ).nodes) :
+    ((f φ).form y).DependsOn (f φ).nodes := by
+  refine Form.DependsOn.monotone _ ?_ ((f φ).val.property.form y hy).1
+  intro z hz; exact ((f φ).val.property.rel_dom hz).1
+
+/-- Guard-equivalence for the copy phase: on a copy node `y`, the `seq` guard
+`(φ.and ψ) ≤ (seq α β f).form y` agrees with the copy guard `ψ ≤ (f φ).form y`,
+provided the accumulator `ψ` depends only on the copy's nodes.  The extra `φ`
+conjunct is harmless because `φ` depends on the (disjoint) nodes of `α` and is
+satisfiable, so it can always be satisfied without changing the copy formulas. -/
+lemma seq_guard_copy (α β : Lpofin (Label act test)) (f : CopyFn α β)
+    (φ : α.branches) {ψ : Form Node} {y : Node}
+    (hy : y ∈ (f φ).nodes) (hψ : ψ.DependsOn (f φ).nodes) :
+    ((φ.val.toForm.and ψ) ≤ (seq α β f).form y) ↔ (ψ ≤ (f φ).form y) := by
+  have hg : ((f φ).form y).DependsOn (f φ).nodes := copy_form_dependsOn α β f φ hy
+  have hφdep : φ.val.toForm.DependsOn α.nodes := by
+    refine φ.val.dependsOn.monotone _ ?_
+    exact φ.val.tests_valid.trans tests_sub_nodes
+  have hd : Disjoint α.nodes (f φ).nodes := (f.property φ).2.1
+  rw [seq_form_copy α β f φ hy]
+  constructor
+  · intro h v hv
+    obtain ⟨w, hw⟩ := φ.val.sat
+    set v' : Set Node := (v \ α.nodes) ∪ (w ∩ α.nodes) with hv'def
+    -- `v'` agrees with `w` on `α.nodes` and with `v` on `(f φ).nodes`.
+    have hsdφ : Disjoint (symmDiff w v') α.nodes := by
+      rw [Set.disjoint_left]; intro x hx hxα
+      rcases Set.mem_symmDiff.mp hx with ⟨hxw, hxv'⟩ | ⟨hxv', hxw⟩
+      · exact hxv' (Or.inr ⟨hxw, hxα⟩)
+      · rcases hxv' with ⟨_, hxnα⟩ | ⟨hxw', _⟩
+        · exact hxnα hxα
+        · exact hxw hxw'
+    have hsdψ : Disjoint (symmDiff v v') (f φ).nodes := by
+      rw [Set.disjoint_left]; intro x hx hxfφ
+      have hxnα : x ∉ α.nodes := Set.disjoint_left.mp hd.symm hxfφ
+      rcases Set.mem_symmDiff.mp hx with ⟨hxv, hxv'⟩ | ⟨hxv', hxv⟩
+      · exact hxv' (Or.inl ⟨hxv, hxnα⟩)
+      · rcases hxv' with ⟨hxvv, _⟩ | ⟨_, hxα⟩
+        · exact hxv hxvv
+        · exact hxnα hxα
+    have hφv' : φ.val.toForm v' := (hφdep w v' hsdφ) ▸ hw
+    have hψv' : ψ v' := (hψ v v' hsdψ) ▸ hv
+    have hgoal := (h v' ⟨hφv', hψv'⟩).1
+    exact (hg v v' hsdψ).symm ▸ hgoal
+  · intro h v hv
+    exact ⟨h v hv.2, hv.1⟩
+
 end Lpofin
