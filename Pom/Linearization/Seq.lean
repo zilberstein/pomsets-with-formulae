@@ -9,8 +9,8 @@ open Linearization
 namespace Pomfin
 
 lemma lin_seq {t : Type → Type} {s act test : Type}
+    [∀ {β : Type}, OmegaCompletePartialOrder (t β)] [∀ {β : Type}, OrderBot (t β)]
     [Linearizable t s]
-    [∀ {β : Type}, Preorder (t β)] [∀ {β : Type}, OrderBot (t β)]
     [PartialOrder act] [Sem act s (t s)]
     [PartialOrder test] [Sem test s (t Bool)]
     (p q : Pomfin (Label act test)) :
@@ -28,8 +28,8 @@ namespace Pom
 open OmegaCompletePartialOrder
 
 theorem lin_seq {t : Type → Type} {s act test : Type}
-    [Linearizable t s]
     [∀ {β : Type}, OmegaCompletePartialOrder (t β)] [∀ {β : Type}, OrderBot (t β)]
+    [Linearizable t s]
     [DCPO act] [ScottCompact act] [Sem act s (t s)]
     [DCPO test] [ScottCompact test] [Sem test s (t Bool)]
     (p q : Pom (Label act test)) :

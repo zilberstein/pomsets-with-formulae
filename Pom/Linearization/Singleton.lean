@@ -5,8 +5,9 @@ open Linearization
 namespace Label
 
 def eval {t : Type → Type} {s act test : Type}
-    [Linearizable t s] [Bot (t s)]
-    [Sem act s (t s)] [Sem test s (t Bool)]
+    [∀ β, OmegaCompletePartialOrder (t β)] [∀ β, OrderBot (t β)] [Linearizable t s]
+    [Preorder act] [Sem act s (t s)]
+    [Preorder test] [Sem test s (t Bool)]
     (ℓ : Label act test) : s → t s :=
   match ℓ with
     | Label.bot => ⊥
@@ -47,8 +48,9 @@ lemma singleton_filter {l : Type} [Bot l] (x : Node) (ℓ : l) (r : Bool) :
   rw [singleton_erase] at he; contradiction
 
 lemma lin_rec_eq_empty {t : Type → Type} {s act test : Type}
-    [Linearizable t s] [Bot (t s)]
-    [Sem act s (t s)] [Sem test s (t Bool)]
+    [∀ β, OmegaCompletePartialOrder (t β)] [∀ β, OrderBot (t β)] [Linearizable t s]
+    [Preorder act] [Sem act s (t s)]
+    [Preorder test] [Sem test s (t Bool)]
     (α : Lpofin (Label act test)) {u : Finset Node} {φ : Form Node}
     (h : u = ∅) :
     (α.lin_rec u φ : s → t s) = pure := by
@@ -59,8 +61,9 @@ lemma lin_rec_eq_empty {t : Type → Type} {s act test : Type}
   exact Finset.notMem_empty _ hx
 
 theorem lin_singleton {t : Type → Type} {s act test : Type}
-    [Linearizable t s] [Bot (t s)]
-    [Sem act s (t s)] [Sem test s (t Bool)]
+    [∀ β, OmegaCompletePartialOrder (t β)] [∀ β, OrderBot (t β)] [Linearizable t s]
+    [Preorder act] [Sem act s (t s)]
+    [Preorder test] [Sem test s (t Bool)]
     (x : Node) (ℓ : Label act test) :
     (lin (singleton x ℓ) : s → t s) = ℓ.eval := by
   ext σ; unfold lin lin_rec
@@ -90,8 +93,7 @@ end Lpofin
 namespace Pom
 
 theorem lin_singleton {t : Type → Type} {s act test : Type}
-    [Linearizable t s]
-    [∀ {β : Type}, OmegaCompletePartialOrder (t β)] [∀ {β : Type}, OrderBot (t β)]
+    [∀ β, OmegaCompletePartialOrder (t β)] [∀ β, OrderBot (t β)] [Linearizable t s]
     [DCPO act] [Sem act s (t s)]
     [DCPO test] [Sem test s (t Bool)]
     (ℓ : Label act test) :
@@ -101,22 +103,19 @@ theorem lin_singleton {t : Type → Type} {s act test : Type}
   exact Lpofin.lin_singleton default ℓ
 
 lemma lin_bot {t : Type → Type} {s act test : Type}
-    [Linearizable t s]
-    [∀ {β : Type}, OmegaCompletePartialOrder (t β)] [∀ {β : Type}, OrderBot (t β)]
+    [∀ β, OmegaCompletePartialOrder (t β)] [∀ β, OrderBot (t β)] [Linearizable t s]
     [DCPO act] [Sem act s (t s)]
     [DCPO test] [Sem test s (t Bool)] :
     @lin t s act test _ _ _ _ _ _ _ (singleton ⊥) = ⊥ := lin_singleton _
 
 lemma lin_fork {t : Type → Type} {s act test : Type}
-    [Linearizable t s]
-    [∀ {β : Type}, OmegaCompletePartialOrder (t β)] [∀ {β : Type}, OrderBot (t β)]
+    [∀ β, OmegaCompletePartialOrder (t β)] [∀ β, OrderBot (t β)] [Linearizable t s]
     [DCPO act] [Sem act s (t s)]
     [DCPO test] [Sem test s (t Bool)] :
     @lin t s act test _ _ _ _ _ _ _ (singleton Label.fork) = pure := lin_singleton _
 
 lemma lin_act {t : Type → Type} {s act test : Type}
-    [Linearizable t s]
-    [∀ {β : Type}, OmegaCompletePartialOrder (t β)] [∀ {β : Type}, OrderBot (t β)]
+    [∀ β, OmegaCompletePartialOrder (t β)] [∀ β, OrderBot (t β)] [Linearizable t s]
     [DCPO act] [Sem act s (t s)]
     [DCPO test] [Sem test s (t Bool)]
     (a : act) :

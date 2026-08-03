@@ -38,19 +38,15 @@ end Nondet
 
 open OmegaCompletePartialOrder
 
-class Sem (c : Type) (in_type out_type : Type) where
+class Sem (c : Type) (in_type out_type : Type) [Preorder c] [Preorder out_type] where
   sem : c → in_type → out_type
 
-  sem_mono [Preorder c] [Preorder out_type] : Monotone sem
-  sem_continuous
-    [OmegaCompletePartialOrder c] [OmegaCompletePartialOrder out_type] :
-    ωScottContinuous sem
+  sem_mono : Monotone sem
 
-class ContinuousMonad (t : Type → Type) where
-  bind_mono {α β : Type} [Monad t] [Preorder (t α)] [Preorder (t β)] :
+class ContinuousMonad (t : Type → Type) [Monad t] [∀ α, OmegaCompletePartialOrder (t α)] where
+  bind_mono {α β : Type} [Monad t] :
     ∀ {m₁ m₂ : t α} {k₁ k₂ : α → t β}, m₁ ≤ m₂ → k₁ ≤ k₂ → (m₁ >>= k₁) ≤ (m₂ >>= k₂)
-  bind_continuous {α β : Type} [Monad t]
-    [OmegaCompletePartialOrder (t α)] [OmegaCompletePartialOrder (t β)] :
+  bind_continuous {α β : Type}  :
     ∀ {c₁ : Chain (t α)} {c₂ : Chain (α → t β)},
       (ωSup c₁ >>= ωSup c₂) = ωSup {
         toFun n := c₁ n >>= c₂ n
@@ -59,11 +55,10 @@ class ContinuousMonad (t : Type → Type) where
   bind_strict {α β : Type} [Monad t] [Bot (t α)] [Bot (t β)] :
     ∀ {f : α → t β}, ⊥ >>= f = ⊥
 
-class Linearizable (t : Type → Type) (α : Type)
+class Linearizable (t : Type → Type) (α : Type) [∀ α, OmegaCompletePartialOrder (t α)]
   extends Monad t, ContinuousMonad t, LawfulMonad t, Nondet (t α) where
-  nondet_mono {ι : Type} [Finite ι] [Preorder (t α)] : Monotone (@nondet ι _)
-  nondet_continuous {ι : Type} [Finite ι] [OmegaCompletePartialOrder (t α)] :
-    ωScottContinuous (@nondet ι _)
+  nondet_mono {ι : Type} [Finite ι] : Monotone (@nondet ι _)
+  nondet_continuous {ι : Type} [Finite ι] : ωScottContinuous (@nondet ι _)
 
   bind_additive {ι : Type} [Finite ι] (κ : ι → t α) (f : α → t α) :
     nondet κ >>= f = nondet fun i ↦ κ i >>= f
@@ -123,6 +118,7 @@ mutual
   open Classical
 
   noncomputable def lin_rec {t : Type → Type} {α act test : Type}
+    [∀ β, Preorder (t β)] [Preorder act] [Preorder test]
     [Sem act α (t α)] [Sem test α (t Bool)] [Monad t] [Nondet (t α)] [Bot (t α)]
     (a : Lpofin (Label act test)) (s : Finset Node) (φ : Form Node) (st : α) : t α :=
     if next a s φ = ∅ then
@@ -133,6 +129,7 @@ mutual
     termination_by (s.card, 1)
 
   noncomputable def lin_node {t : Type → Type} {α act test: Type}
+      [∀ β, Preorder (t β)] [Preorder act] [Preorder test]
       [Sem act α (t α)] [Sem test α (t Bool)] [Monad t] [Nondet (t α)] [Bot (t α)]
       (a : Lpofin (Label act test)) (s : Finset Node) (φ : Form Node) (x : Node) (_hx : x ∈ s)
       (st : α) : t α :=
@@ -157,9 +154,10 @@ mutual
 end
 
 noncomputable def lin {t : Type → Type} {α act test : Type}
-  [Sem act α (t α)] [Sem test α (t Bool)] [Monad t] [Nondet (t α)] [Bot (t α)]
-  (a : Lpofin (Label act test)) : α → t α :=
-    lin_rec a a.nodes_finset Form.true
+    [∀ β, Preorder (t β)] [Preorder act] [Preorder test]
+    [Sem act α (t α)] [Sem test α (t Bool)] [Monad t] [Nondet (t α)] [Bot (t α)]
+    (a : Lpofin (Label act test)) : α → t α :=
+  lin_rec a a.nodes_finset Form.true
 
 open Classical in
 lemma next_iso {l : Type} [Bot l] [LE l] {s : Finset Node} {a b : Lpofin l} {φ : Form Node}
@@ -190,7 +188,8 @@ lemma next_iso {l : Type} [Bot l] [LE l] {s : Finset Node} {a b : Lpofin l} {φ 
 
 open Classical in
 lemma lin_node_mono {m : Type → Type} {α act test : Type}
-    [Linearizable m α] [∀ β, Preorder (m β)] [∀ β, OrderBot (m β)]
+    [∀ β, OmegaCompletePartialOrder (m β)] [∀ β, OrderBot (m β)]
+    [Linearizable m α]
     [Preorder act] [Sem act α (m α)]
     [Preorder test] [Sem test α (m Bool)]
     {s : Finset Node} {φ : Form Node} {a b : Lpofin (Label act test)}
@@ -246,7 +245,8 @@ lemma lin_node_mono {m : Type → Type} {α act test : Type}
 
 open Classical in
 theorem lin_rec_mono {m : Type → Type} {α act test : Type}
-    [Linearizable m α] [∀ β, Preorder (m β)] [∀ β, OrderBot (m β)]
+    [∀ β, OmegaCompletePartialOrder (m β)] [∀ β, OrderBot (m β)]
+    [Linearizable m α]
     [Preorder act] [Sem act α (m α)]
     [Preorder test] [Sem test α (m Bool)]
     {s : Finset Node} {φ : Form Node} {a b : Lpofin (Label act test)}
@@ -270,7 +270,8 @@ theorem lin_rec_mono {m : Type → Type} {α act test : Type}
       exact (Finset.mem_filter.mp hx).2.1 |> Finset.mem_inter.mp |> And.left
 
 theorem lin_mono {m : Type → Type} {α act test : Type}
-    [Linearizable m α] [∀ β, Preorder (m β)] [∀ β, OrderBot (m β)]
+    [∀ β, OmegaCompletePartialOrder (m β)] [∀ β, OrderBot (m β)]
+    [Linearizable m α]
     [PartialOrder act] [Sem act α (m α)]
     [PartialOrder test] [Sem test α (m Bool)] :
     Monotone (lin : Lpofin (Label act test) → α → m α) := by
@@ -414,8 +415,9 @@ lemma form_extend_equiv {l : Type} [Bot l]
   · rintro ⟨y, rfl, hy⟩; simp only [Subtype.coe_eta, Equiv.apply_symm_apply]; exact hy
 
 lemma lin_node_isomorphic {m : Type → Type} {α act test : Type}
-    [Linearizable m α] [Bot (m α)]
-    [Sem act α (m α)] [Sem test α (m Bool)]
+    [∀ β, OmegaCompletePartialOrder (m β)] [∀ β, OrderBot (m β)] [Linearizable m α]
+    [Preorder act] [Sem act α (m α)]
+    [Preorder test] [Sem test α (m Bool)]
     {X : Set Node} {φ : Form Node}
     {a : Lpofin (Label act test)} {e : a.nodes ≃ X} {s : Finset Node}
     (hs : ↑s ⊆ a.nodes) (hφ : φ.DependsOn a.nodes) {x : Node} (hx : x ∈ s)
@@ -455,8 +457,9 @@ lemma lin_node_isomorphic {m : Type → Type} {α act test : Type}
       · exact Form.DependsOn.literal
 
 lemma lin_rec_isomorphic {m : Type → Type} {α act test : Type}
-    [Linearizable m α] [Bot (m α)]
-    [Sem act α (m α)] [Sem test α (m Bool)]
+    [∀ β, OmegaCompletePartialOrder (m β)] [∀ β, OrderBot (m β)] [Linearizable m α]
+    [Preorder act] [Sem act α (m α)]
+    [Preorder test] [Sem test α (m Bool)]
     {X : Set Node} {φ : Form Node}
     {a : Lpofin (Label act test)} (e : a.nodes ≃ X) {s : Finset Node}
     (hs : ↑s ⊆ a.nodes) (hφ : φ.DependsOn a.nodes) :
@@ -473,8 +476,9 @@ lemma lin_rec_isomorphic {m : Type → Type} {α act test : Type}
       intro t ψ ht; apply ih t ht
 
 lemma lin_isomorphic {m : Type → Type} {α act test : Type}
-    [Linearizable m α] [Bot (m α)]
-    [Sem act α (m α)] [Sem test α (m Bool)]
+    [∀ β, OmegaCompletePartialOrder (m β)] [∀ β, OrderBot (m β)] [Linearizable m α]
+    [Preorder act] [Sem act α (m α)]
+    [Preorder test] [Sem test α (m Bool)]
     {a b : Lpofin (Label act test)} (h : a ≈ b) :
     (lin a : α →  m α) = lin b := by
   unfold lin; have ⟨e, h⟩ := h

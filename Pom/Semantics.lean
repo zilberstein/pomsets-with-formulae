@@ -8,9 +8,8 @@ namespace Semantics
 
 open Linearization
 
-variable {t st} [Linearizable t st]
-  [∀ β, OmegaCompletePartialOrder (t β)] [∀ β, OrderBot (t β)]
-variable {act test : Type}
+variable {t : Type → Type} {st act test : Type}
+  [∀ β, OmegaCompletePartialOrder (t β)] [∀ β, OrderBot (t β)] [Linearizable t st]
   [DCPO act] [Sem act st (t st)]
   [DCPO test] [Sem test st (t Bool)]
 
@@ -64,7 +63,7 @@ theorem lin_skip : @lin t st act test _ _ _ _ _ _ _ skip = pure := lin_fork
 def while_sem (b : test) (f κ : st → t st) : st → t st :=
   fun σ ↦ Sem.sem b σ >>= fun r ↦ bif r then f σ >>= κ else pure σ
 
-omit [(β : Type) → OrderBot (t β)] [DCPO test] in
+omit [(β : Type) → OrderBot (t β)] in
 lemma while_sem_monotone (b : test) (f : st → t st) : Monotone (while_sem b f) := by
   intro κ₁ κ₂ hle σ; refine ContinuousMonad.bind_mono (le_refl _) ?_
   rintro (_ | _)
