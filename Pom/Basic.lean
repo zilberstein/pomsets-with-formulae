@@ -26,8 +26,8 @@ lemma singleton_equiv {l : Type} [Bot l] {x y : Node} (ℓ : l) :
     right_inv x := by ext; symm; exact Set.mem_singleton_iff.mp x.property
   }
   ext1
-  · simp only [Lpo.permute, Lpo.singleton, Lpo.nodes]
-  · ext u v; simp only [Lpo.rel, Lpo.permute, Lpo.singleton]; constructor
+  · rfl
+  · ext u v; constructor
     · rintro ⟨_, _, f⟩; exact f
     · exact False.elim
   · ext z; simp only [Lpo.lab, Lpo.permute, Lpo.singleton, Lpo.nodes]

@@ -38,6 +38,8 @@ noncomputable def lin {t : Type → Type} {α act test : Type}
     (p : Pom (Label act test)) : α → t α :=
   p.ext _ (Pomfin.lin_monotone t α act test)
 
+notation "𝓛" => lin
+
 lemma lin_continuous {t : Type → Type} {α act test : Type}
     [Linearizable t α]
     [∀ {β : Type}, OmegaCompletePartialOrder (t β)] [∀ {β : Type}, OrderBot (t β)]

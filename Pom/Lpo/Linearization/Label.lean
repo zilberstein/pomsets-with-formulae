@@ -34,7 +34,10 @@ lemma isTest_iff (ℓ : Label act test) : ℓ.isTest ↔ ∃ b, ℓ = Label.test
   · rintro ⟨_, rfl⟩; trivial
 
 lemma test_ne_bot (b : test) : @Label.test act test b ≠ Label.bot := by
-  simp only [ne_eq, reduceCtorEq, not_false_eq_true]
+  intro h; contradiction
+
+lemma fork_ne_bot : @Label.fork act test ≠ Label.bot := by
+  intro h; contradiction
 
 end Label
 

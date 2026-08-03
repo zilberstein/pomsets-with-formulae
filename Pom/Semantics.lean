@@ -1,8 +1,10 @@
 import Pom.Linearization.Guard
 import Pom.Linearization.Seq
 import Pom.Linearization.Singleton
+import Pom.Operations.Par
 
 namespace Pom
+namespace Semantics
 
 open Linearization
 
@@ -13,6 +15,12 @@ variable {act test : Type}
   [DCPO test] [Sem test st (t Bool)]
 
 def skip : Pom (Label act test) := Pom.singleton Label.fork
+
+noncomputable def par (p q : Pom (Label act test)) : Pom (Label act test) :=
+  Pom.par Label.fork_ne_bot p q
+
+noncomputable def seq [ScottCompact act] [ScottCompact test] :
+    Pom (Label act test) → Pom (Label act test) → Pom (Label act test) := Pom.seq
 
 noncomputable def if_stmt (b : test) (p q : Pom (Label act test)) : Pom (Label act test) :=
   guard (Label.test_ne_bot b) p q
@@ -34,7 +42,7 @@ lemma while_body_continuous [ScottCompact act] [ScottCompact test]
     (b : test) (p : Pom (Label act test)) : ωScottContinuous (while_body b p) := by
   refine ωScottContinuous.of_monotone_map_ωSup ⟨while_body_monotone b p, ?_⟩
   intro c; unfold while_body;
-  nth_rewrite 1 [← Chain.ωSup_const p]; rw [seq_continuous]
+  nth_rewrite 1 [← Chain.ωSup_const p]; unfold seq; rw [seq_continuous]
   conv in skip => exact (Chain.ωSup_const _).symm
   exact guard_continuous _ _ _
 
@@ -88,4 +96,5 @@ theorem lin_while [ScottCompact act] [ScottCompact test]
   unfold fixedPoints.iterateChain; simp only [DFunLike.coe, Function.comp_apply]
   exact congrFun (lin_while_body _ _ _) _
 
+end Semantics
 end Pom

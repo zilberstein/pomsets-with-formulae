@@ -46,7 +46,6 @@ theorem lin_seq {t : Type → Type} {s act test : Type}
     toFun n := Pomfin.lin t s act test (q.trunc n)
     monotone' _ _ hle := Pomfin.lin_monotone t s act test <| trunc_mono (le_refl q) hle
   }
-  conv => lhs; exact (ContinuousMonad.bind_continuous (c₁ := c₁) (c₂ := c₂)).symm
-  rfl
+  exact (ContinuousMonad.bind_continuous (c₁ := c₁) (c₂ := c₂)).symm
 
 end Pom
