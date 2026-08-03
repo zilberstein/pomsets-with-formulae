@@ -151,4 +151,30 @@ lemma restrict {p : Form α} {s v : Set α} (hdep : p.DependsOn s) : p v ↔ p (
 
 end DependsOn
 
+/-- If `p` depends only on `s`, `q` only on `u`, these are disjoint and `q` is satisfiable,
+then conjoining `q` does not change the satisfiability of `p`. -/
+lemma sat_and_indep {α : Type} {p q : Form α} {s u : Set α}
+    (hp : p.DependsOn s) (hq : q.DependsOn u) (hd : Disjoint s u) (hqsat : q.sat) :
+    Form.sat (p.and q) ↔ Form.sat p := by
+  constructor
+  · rintro ⟨v, hv⟩; exact ⟨v, hv.1⟩
+  · rintro ⟨v, hv⟩
+    obtain ⟨w, hw⟩ := hqsat
+    have hsd1 : Disjoint (symmDiff v ((v \ u) ∪ (w ∩ u))) s := by
+      rw [Set.disjoint_left]; intro x hx hxs
+      have hxu : x ∉ u := fun hxu => Set.disjoint_left.mp hd hxs hxu
+      rcases Set.mem_symmDiff.mp hx with ⟨hxv, hxv'⟩ | ⟨hxv', hxv⟩
+      · exact hxv' (Or.inl ⟨hxv, hxu⟩)
+      · rcases hxv' with ⟨hxvv, _⟩ | ⟨_, hxuu⟩
+        · exact hxv hxvv
+        · exact hxu hxuu
+    have hsd2 : Disjoint (symmDiff w ((v \ u) ∪ (w ∩ u))) u := by
+      rw [Set.disjoint_left]; intro x hx hxu
+      rcases Set.mem_symmDiff.mp hx with ⟨hxw, hxv'⟩ | ⟨hxv', hxw⟩
+      · exact hxv' (Or.inr ⟨hxw, hxu⟩)
+      · rcases hxv' with ⟨_, hxuu⟩ | ⟨hxww, _⟩
+        · exact hxuu hxu
+        · exact hxw hxww
+    refine ⟨(v \ u) ∪ (w ∩ u), (hp v _ hsd1) ▸ hv, (hq w _ hsd2) ▸ hw⟩
+
 end Form
