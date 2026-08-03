@@ -38,8 +38,6 @@ lemma exists_copy_fn
     have := e_base.injective (Subtype.val_injective heq)
     exact hne (Prod.mk_inj.mp this).1.symm
 
-variable [PartialOrder act] [PartialOrder test]
-
 noncomputable def seq (p q : Pomfin (Label act test)) : Pomfin (Label act test) :=
   Quotient.map₂
     (fun α β ↦ Lpofin.seq α β (Classical.choice (exists_copy_fn α β)))
@@ -58,7 +56,7 @@ lemma exists_rep_seq (p q : Pomfin (Label act test)) :
   have ⟨f⟩ := exists_copy_fn α β
   exact ⟨α, β, f, rfl, rfl, mem_seq _ _ _⟩
 
-lemma seq_monotone {p p' q q' : Pomfin (Label act test)}
+lemma seq_monotone [PartialOrder act] [PartialOrder test] {p p' q q' : Pomfin (Label act test)}
     (hle : p ≤ p') (hle' : q ≤ q') : seq p q ≤ seq p' q' := by
   obtain ⟨α, rfl, α', rfl, hle₁⟩ := Pomfin.le_iff.mp hle
   obtain ⟨β, rfl, β', rfl, hle₂⟩ := Pomfin.le_iff.mp hle'

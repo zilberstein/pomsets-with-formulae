@@ -2,166 +2,7 @@ import Pom.Lpo.Operations.Seq
 
 namespace Lpofin
 
-variable {act test : Type} [PartialOrder act] [PartialOrder test]
-
-lemma pathCond_permute_toForm {α : Lpofin (Label act test)} {Y : Set Node}
-    (φ : PathCond α) (e : α.nodes ≃ Y) :
-    (φ.permute e).toForm = φ.toForm.permute e := by
-  ext v
-  constructor
-  · intro h x
-    let er := Lpo.perm_subset e (φ.tests_valid.trans tests_sub_nodes)
-    have hx := h (er x)
-    change (if φ.truth (er.symm (er x)) then Form.literal (er x).val
-      else (Form.literal (er x).val).not) v at hx
-    rw [er.symm_apply_apply] at hx
-    by_cases ht : φ.truth x = true
-    · simp only [ht, if_true, Form.literal] at hx ⊢
-      refine ⟨e ⟨x, φ.tests_valid.trans tests_sub_nodes x.property⟩, ?_, hx⟩
-      exact congrArg Subtype.val (e.symm_apply_apply ⟨x,
-        φ.tests_valid.trans tests_sub_nodes x.property⟩)
-    · simp only [ht] at hx ⊢
-      rintro ⟨z, hz, hv⟩
-      apply hx
-      have heq : z = e ⟨x, φ.tests_valid.trans tests_sub_nodes x.property⟩ := by
-        apply e.symm.injective
-        ext
-        simpa only [Equiv.symm_apply_apply] using hz
-      rw [heq] at hv
-      exact hv
-  · intro h x
-    let er := Lpo.perm_subset e (φ.tests_valid.trans tests_sub_nodes)
-    let y : ↑φ.tests := er.symm x
-    have hy := h y
-    change (if φ.truth y then Form.literal y.val else (Form.literal y.val).not)
-      (Form.image v e.symm) at hy
-    change (if φ.truth (er.symm x) then Form.literal x.val else (Form.literal x.val).not) v
-    by_cases ht : φ.truth y = true
-    · have ht' : φ.truth (er.symm x) = true := ht
-      simp only [ht, if_true, Form.literal] at hy
-      simp only [ht', if_true, Form.literal]
-      rcases hy with ⟨z, hz, hv⟩
-      have hxY : x.val ∈ Y := (φ.permute e).tests_valid x.property |>
-        tests_sub_nodes
-      have heq : z = ⟨x.val, hxY⟩ := by
-        ext
-        calc
-          z.val = (e (e.symm z)).val :=
-            (congrArg Subtype.val (e.apply_symm_apply z)).symm
-          _ = (e ⟨y.val, φ.tests_valid.trans tests_sub_nodes y.property⟩).val := by
-            congr 2
-            exact Subtype.ext hz
-          _ = x.val := by
-            change (er y).val = x.val
-            exact congrArg Subtype.val (er.apply_symm_apply x)
-      rw [congrArg Subtype.val heq] at hv
-      exact hv
-    · have ht' : ¬ φ.truth (er.symm x) = true := ht
-      simp only [ht] at hy
-      simp only [ht']
-      intro hxv
-      apply hy
-      have hxY : x.val ∈ Y := (φ.permute e).tests_valid x.property |>
-        tests_sub_nodes
-      refine ⟨⟨x.val, hxY⟩, ?_, hxv⟩
-      calc
-        (e.symm ⟨x.val, hxY⟩).val = y.val := by
-          have hh := congrArg Subtype.val (er.apply_symm_apply x)
-          change (e ⟨y.val, φ.tests_valid.trans tests_sub_nodes y.property⟩).val = x.val at hh
-          have hs : e.symm ⟨x.val, hxY⟩ =
-              ⟨y.val, φ.tests_valid.trans tests_sub_nodes y.property⟩ := by
-            apply e.injective
-            ext
-            simpa only [e.apply_symm_apply] using hh.symm
-          exact congrArg Subtype.val hs
-        _ = y.val := rfl
-
-lemma pathCond_cast_toForm {α β : Lpofin (Label act test)}
-    (h : α = β) (φ : PathCond α) :
-    (h ▸ φ).toForm = φ.toForm := by
-  subst β
-  rfl
-
-lemma pathCond_permute_symm {α : Lpofin (Label act test)} {Y : Set Node}
-    (φ : PathCond α) (e : α.nodes ≃ Y)
-    (H : (α.permute e).permute e.symm = α) :
-    H ▸ (φ.permute e).permute e.symm = φ := by
-  sorry
-
-lemma reachableWith_permute {α : Lpofin (Label act test)} {Y : Set Node}
-    {φ : PathCond α} {e : α.nodes ≃ Y} {x : Node} (hx : x ∈ α.nodes) :
-    α.ReachableWith φ x ↔
-      (α.permute e).ReachableWith (φ.permute e) (e ⟨x, hx⟩).val := by
-  sorry
-
-lemma stuck_permute {α : Lpofin (Label act test)} {Y : Set Node} {φ : PathCond α}
-    (e : α.nodes ≃ Y) :
-    (α.stuck φ).permute e = (α.permute e).stuck (φ.permute e) := by
-  sorry
-
-lemma branches_permute {α α' : Lpofin (Label act test)} {e : α.nodes ≃ α'.nodes}
-    (h : α.permute e = α') :
-    ∀ φ ∈ α.branches, (h ▸ φ.permute e) ∈ α'.branches := by
-  rintro φ ⟨himp, hstk, hmax⟩
-  refine ⟨?_, ?_, ?_⟩ <;> sorry
-  -- · rintro x ⟨x, rfl⟩; conv => lhs; rw [← h]
-  --   have ⟨b, hlab⟩ := (Label.isTest_iff _).mp <| hs x.property
-  --   refine (Label.isTest_iff _).mpr ⟨b, ?_⟩
-  --   simp only [lab, Lpo.lab, permute, Lpo.permute, Subtype.coe_prop, ↓reduceDIte, Subtype.coe_eta]
-  --   conv => lhs; arg 2; arg 1; exact e.symm_apply_apply _
-  --   exact hlab
-  -- · ext v; constructor
-  --   · intro hform x; have := hform (eb.symm x)
-  --     simp only [g, node_lit] at *; by_cases h : f (eb.symm x) = true
-  --     · simp only [h, ↓reduceIte] at *
-  --       have ⟨z, heq, hmem⟩ := this
-  --       sorry
-  --     · sorry
-  --   · sorry
-  -- · refine ⟨?_, ?_⟩
-  --   · intro v hform y; sorry
-  --   · sorry
-  -- · sorry
-
-def branches_equiv {α α' : Lpofin (Label act test)} {e : α.nodes ≃ α'.nodes}
-    (h : α.permute e = α') :
-    α.branches ≃ α'.branches := {
-  toFun φ := ⟨h ▸ φ.val.permute e, branches_permute h _ φ.property⟩
-  invFun φ :=
-    let H : α'.permute e.symm = α := by
-      refine Subtype.ext ?_
-      symm
-      refine Lpo.permute_symm ?_
-      conv => rhs; arg 1; exact h.symm
-      rfl
-    ⟨H ▸ φ.val.permute e.symm, branches_permute H _ φ.property⟩
-  left_inv := by sorry
-    -- rintro ⟨_, ⟨t, ht, f, rfl, _⟩⟩
-    -- have h (x : ↑t) := (α.val.property.form _ (tests_sub_nodes <| ht x.property)).1
-    -- ext1; ext1 v; simp only [eq_iff_iff]
-    -- have hdep : (mk_form f).DependsOn α.nodes := by
-    --   refine (mk_form_depends_on f).monotone _ ?_
-    --   intro x hx; exact tests_sub_nodes <| ht hx
-    -- rw [Form.permute_trans _ _ _ hdep, e.self_trans_symm, Form.permute_refl _ hdep]
-  right_inv := by sorry
-    -- rintro ⟨_, ⟨t, ht, f, rfl, _⟩⟩
-    -- have h (x : ↑t) := (α'.val.property.form _ (tests_sub_nodes <| ht x.property)).1
-    -- ext1; ext1 v; simp only [eq_iff_iff]
-    -- have hdep : (mk_form f).DependsOn α'.nodes := by
-    --   refine (mk_form_depends_on f).monotone _ ?_
-    --   intro x hx; exact tests_sub_nodes <| ht hx
-    -- rw [Form.permute_trans _ _ _ hdep, e.symm_trans_self, Form.permute_refl _ hdep]
-    }
-
-lemma branches_equiv_toForm {α α' : Lpofin (Label act test)}
-    {e : α.nodes ≃ α'.nodes} (he : α.val.permute e = α'.val)
-    (φ : α.branches) :
-    (branches_equiv (Subtype.ext he) φ).val.toForm =
-      φ.val.toForm.permute e := by
-  let H : α.permute e = α' := Subtype.ext he
-  change (H ▸ φ.val.permute e).toForm = _
-  rw [pathCond_cast_toForm H]
-  exact pathCond_permute_toForm φ.val e
+variable {act test : Type}
 
 lemma form_imp_permute {l : Type} [Bot l]
     {a : Lpofin l} {Y : Set Node} {e : a.nodes ≃ Y} {φ : Form Node} {x : Node}
@@ -180,6 +21,222 @@ lemma form_imp_permute {l : Type} [Bot l]
     rcases Set.mem_symmDiff.mp hy with ⟨hv, hv'⟩ | ⟨hv, hv'⟩
     · exact hv' ⟨hv, hy'⟩
     · exact hv' hv.1
+
+namespace ReachableWith
+
+lemma permute_forward {α : Lpofin (Label act test)} {Y : Set Node}
+    {φ : PathCond α} {e : α.nodes ≃ Y} {x : Node} (hx : x ∈ α.nodes) :
+    α.ReachableWith φ x →
+      (α.permute e).ReachableWith (φ.permute e) (e ⟨x, hx⟩).val := by
+  rintro ⟨ψ, hle, himp⟩
+  refine ⟨ψ.permute e, PathCond.permute_mono hle e, ?_⟩
+  rw [PathCond.permute_toForm]
+  exact (form_imp_permute hx
+    (ψ.dependsOn.monotone _ (ψ.tests_valid.trans tests_sub_nodes))).mp himp
+
+lemma cast {α β : Lpofin (Label act test)} (H : α = β)
+    {φ : PathCond α} {x : Node} :
+    α.ReachableWith φ x ↔ β.ReachableWith (H ▸ φ) x := by
+  subst β
+  rfl
+
+lemma weaken {α : Lpofin (Label act test)} {φ ψ : PathCond α}
+    {x : Node} (hle : φ ≤ ψ) (hr : α.ReachableWith ψ x) : α.ReachableWith φ x := by
+  rcases hr with ⟨η, hψη, himp⟩
+  exact ⟨η, hle.trans hψη, himp⟩
+
+lemma permute {α : Lpofin (Label act test)} {Y : Set Node}
+    {φ : PathCond α} {e : α.nodes ≃ Y} {x : Node} (hx : x ∈ α.nodes) :
+    α.ReachableWith φ x ↔
+      (α.permute e).ReachableWith (φ.permute e) (e ⟨x, hx⟩).val := by
+  constructor
+  · exact permute_forward hx
+  · intro hr
+    let H : (α.permute e).permute e.symm = α := by
+      apply Subtype.ext
+      exact (Lpo.permute_symm (a := α.val) (b := (α.permute e).val) rfl).symm
+    have hr' := hr.permute_forward (α := α.permute e) (e := e.symm)
+      (φ := φ.permute e) (x := (e ⟨x, hx⟩).val) (Subtype.coe_prop _)
+    have hr'' := (cast H).mp hr'
+    have hpoint : (e.symm ⟨(e ⟨x, hx⟩).val, Subtype.coe_prop _⟩).val = x :=
+      congrArg Subtype.val (e.symm_apply_apply ⟨x, hx⟩)
+    change α.ReachableWith (H ▸ (φ.permute e).permute e.symm)
+      (e.symm ⟨(e ⟨x, hx⟩).val, Subtype.coe_prop _⟩).val at hr''
+    rw [hpoint, PathCond.permute_symm φ e H] at hr''
+    exact hr''
+
+end ReachableWith
+
+lemma lab_permute_eq {α : Lpofin (Label act test)} {Y : Set Node}
+    (e : α.nodes ≃ Y) {x : Node} (hx : x ∈ α.nodes) :
+    (α.permute e).lab (e ⟨x, hx⟩).val = α.lab x := by
+  change (α.val.permute e).lab (e ⟨x, hx⟩).val = α.val.lab x
+  simp only [Lpo.permute, Lpo.lab, dif_pos (Subtype.coe_prop (e ⟨x, hx⟩))]
+  congr 1
+  exact congrArg Subtype.val (e.symm_apply_apply ⟨x, hx⟩)
+
+lemma form_permute_at {α : Lpofin (Label act test)} {Y : Set Node}
+    (e : α.nodes ≃ Y) {x : Node} (hx : x ∈ α.nodes) (v : Set Node) :
+    (α.permute e).form (e ⟨x, hx⟩).val v ↔ α.form x (Form.image v e.symm) := by
+  change (α.val.permute e).form (e ⟨x, hx⟩).val v ↔ _
+  simp only [Lpo.permute, Lpo.form, Form.permute]
+  have heq : (e.symm ⟨(e ⟨x, hx⟩).val, Subtype.coe_prop _⟩).val = x :=
+    congrArg Subtype.val (e.symm_apply_apply ⟨x, hx⟩)
+  constructor
+  · rintro ⟨_, h⟩
+    change α.val.form _ _ at h
+    exact (congrFun (congrArg α.val.form heq) _).mp h
+  · intro h
+    refine ⟨Subtype.coe_prop _, ?_⟩
+    change α.val.form _ _
+    exact (congrFun (congrArg α.val.form heq) _).mpr h
+
+lemma stuck_permute {α : Lpofin (Label act test)} {Y : Set Node} {φ : PathCond α}
+    (e : α.nodes ≃ Y) :
+    (α.stuck φ).permute e = (α.permute e).stuck (φ.permute e) := by
+  ext v
+  constructor
+  · rintro ⟨x, hxform⟩
+    rcases x.property with ⟨hx, hlab, hr⟩
+    let y := (e ⟨x.val, hx⟩).val
+    have hy : y ∈ (α.permute e).nodes := Subtype.coe_prop (e ⟨x.val, hx⟩)
+    refine ⟨⟨y, hy, ?_, (ReachableWith.permute hx).mp hr⟩, ?_⟩
+    · exact (lab_permute_eq e hx).trans hlab
+    · exact (form_permute_at e hx v).mpr hxform
+  · rintro ⟨y, hyform⟩
+    rcases y.property with ⟨hy, hlab, hr⟩
+    let x := (e.symm ⟨y.val, hy⟩).val
+    have hx : x ∈ α.nodes := Subtype.coe_prop (e.symm ⟨y.val, hy⟩)
+    have hexy : (e ⟨x, hx⟩).val = y.val :=
+      congrArg Subtype.val (e.apply_symm_apply ⟨y.val, hy⟩)
+    refine ⟨⟨x, hx, ?_, ?_⟩, ?_⟩
+    · rw [← lab_permute_eq e hx, hexy]
+      exact hlab
+    · apply (ReachableWith.permute (e := e) hx).mpr
+      rw [hexy]
+      exact hr
+    · apply (form_permute_at e hx v).mp
+      rw [hexy]
+      exact hyform
+
+lemma branches_cast {α β : Lpofin (Label act test)} (H : α = β)
+    {φ : PathCond α} : φ ∈ α.branches ↔ (H ▸ φ) ∈ β.branches := by
+  subst β
+  rfl
+
+lemma branches_permute_self {α : Lpofin (Label act test)} {Y : Set Node}
+    (e : α.nodes ≃ Y) : ∀ φ ∈ α.branches, φ.permute e ∈ (α.permute e).branches := by
+  intro φ ⟨himp, hstk, hmax⟩
+  refine ⟨?_, ?_, ?_⟩
+  · intro y hy
+    obtain ⟨x, rfl⟩ := hy
+    rw [PathCond.permute_toForm]
+    have hxnode := φ.tests_valid.trans tests_sub_nodes x.property
+    apply (form_imp_permute hxnode
+      (φ.dependsOn.monotone _ (φ.tests_valid.trans tests_sub_nodes))).mp
+    exact himp x.val x.property
+  · rw [PathCond.permute_toForm, ← stuck_permute]
+    intro v hv
+    exact hstk (Form.image v e.symm) hv
+  · intro y hytest hyis hnstuck hr
+    have hyn : y ∈ (α.permute e).nodes := tests_sub_nodes hyis
+    let x := (e.symm ⟨y, hyn⟩).val
+    have hx : x ∈ α.nodes := Subtype.coe_prop _
+    have hexy : (e ⟨x, hx⟩).val = y :=
+      congrArg Subtype.val (e.apply_symm_apply ⟨y, hyn⟩)
+    have hxis : α.isTest x := by
+      unfold isTest
+      rw [← lab_permute_eq e hx, hexy]
+      exact hyis
+    have hxnot : x ∉ φ.tests := by
+      intro hxt
+      apply hytest
+      exact ⟨⟨x, hxt⟩, hexy⟩
+    apply hmax hxnot hxis
+    · intro hs
+      apply hnstuck
+      rw [← hexy, ← stuck_permute]
+      intro v hv
+      have hvx := (form_permute_at e hx v).mp hv
+      have hv' := hs (Form.image v e.symm) hvx
+      exact hv'
+    · apply (ReachableWith.permute hx).mpr
+      rw [hexy]
+      exact hr
+
+lemma branches_permute {α α' : Lpofin (Label act test)} {e : α.nodes ≃ α'.nodes}
+    (h : α.permute e = α') :
+    ∀ φ ∈ α.branches, (h ▸ φ.permute e) ∈ α'.branches := by
+  intro φ hφ
+  exact (branches_cast h).mp (branches_permute_self e φ hφ)
+
+lemma branches_equiv_left_inv {α α' : Lpofin (Label act test)}
+    {e : α.nodes ≃ α'.nodes} (h : α.permute e = α') (φ : α.branches) :
+    let H : α'.permute e.symm = α := by
+      refine Subtype.ext ?_
+      symm
+      refine Lpo.permute_symm ?_
+      conv => rhs; arg 1; exact h.symm
+      rfl
+    H ▸ (h ▸ φ.val.permute e).permute e.symm = φ.val := by
+  dsimp
+  apply PathCond.toForm_injective
+  rw [PathCond.cast_toForm, PathCond.permute_toForm, PathCond.cast_toForm,
+    PathCond.permute_toForm]
+  have hd : φ.val.toForm.DependsOn α.nodes :=
+    φ.val.dependsOn.monotone _ (φ.val.tests_valid.trans tests_sub_nodes)
+  exact (Form.permute_trans φ.val.toForm e e.symm hd).trans <| by
+    rw [e.self_trans_symm, Form.permute_refl φ.val.toForm hd]
+
+lemma branches_equiv_right_inv {α α' : Lpofin (Label act test)}
+    {e : α.nodes ≃ α'.nodes} (h : α.permute e = α') (φ : α'.branches) :
+    let H : α'.permute e.symm = α := by
+      refine Subtype.ext ?_
+      symm
+      refine Lpo.permute_symm ?_
+      conv => rhs; arg 1; exact h.symm
+      rfl
+    h ▸ (H ▸ φ.val.permute e.symm).permute e = φ.val := by
+  dsimp
+  apply PathCond.toForm_injective
+  rw [PathCond.cast_toForm, PathCond.permute_toForm, PathCond.cast_toForm,
+    PathCond.permute_toForm]
+  have hd : φ.val.toForm.DependsOn α'.nodes :=
+    φ.val.dependsOn.monotone _ (φ.val.tests_valid.trans tests_sub_nodes)
+  exact (Form.permute_trans φ.val.toForm e.symm e hd).trans <| by
+    rw [e.symm_trans_self, Form.permute_refl φ.val.toForm hd]
+
+def branches_equiv {α α' : Lpofin (Label act test)} {e : α.nodes ≃ α'.nodes}
+    (h : α.permute e = α') :
+    α.branches ≃ α'.branches := {
+  toFun φ := ⟨h ▸ φ.val.permute e, branches_permute h _ φ.property⟩
+  invFun φ :=
+    let H : α'.permute e.symm = α := by
+      refine Subtype.ext ?_
+      symm
+      refine Lpo.permute_symm ?_
+      conv => rhs; arg 1; exact h.symm
+      rfl
+    ⟨H ▸ φ.val.permute e.symm, branches_permute H _ φ.property⟩
+  left_inv := by
+    intro φ
+    apply Subtype.ext
+    exact branches_equiv_left_inv h φ
+  right_inv := by
+    intro φ
+    apply Subtype.ext
+    exact branches_equiv_right_inv h φ
+}
+
+lemma branches_equiv_toForm {α α' : Lpofin (Label act test)}
+    {e : α.nodes ≃ α'.nodes} (he : α.val.permute e = α'.val)
+    (φ : α.branches) :
+    (branches_equiv (Subtype.ext he) φ).val.toForm =
+      φ.val.toForm.permute e := by
+  let H : α.permute e = α' := Subtype.ext he
+  change (H ▸ φ.val.permute e).toForm = _
+  rw [PathCond.cast_toForm H]
+  exact PathCond.permute_toForm φ.val e
 
 lemma seq_iso_rel {α α' β β' : Lpofin (Label act test)} {f : CopyFn α β} {g : CopyFn α' β'}
     {e : α.val.nodes ≃ α'.val.nodes} (he : α.val.permute e = α'.val)

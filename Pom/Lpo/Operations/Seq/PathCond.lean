@@ -186,7 +186,7 @@ lemma up_cast_injective [Preorder act] [Preorder test] {α β : Lpofin (Label ac
   intro φ ψ h; have ⟨htst, htr⟩ := PathCond.ext_iff.mp h
   ext1 <;> assumption
 
-lemma cast_toForm [Preorder act] [Preorder test] {α β : Lpofin (Label act test)} {φ : PathCond α}
+lemma up_cast_toForm [Preorder act] [Preorder test] {α β : Lpofin (Label act test)} {φ : PathCond α}
     {hle : α ≤ β} : (φ.up_cast hle).toForm = φ.toForm := by
   ext v; refine forall_congr' ?_; intro x; rfl
 
@@ -249,6 +249,166 @@ lemma restrict_entails {α : Lpofin (Label act test)} (φ : PathCond α)
   refine hq.monotone _ ?_
   intro x hx ⟨ht, h⟩; apply h
   exact ⟨ht, hx⟩
+
+lemma permute_toForm {α : Lpofin (Label act test)} {Y : Set Node}
+    (φ : PathCond α) (e : α.nodes ≃ Y) :
+    (φ.permute e).toForm = φ.toForm.permute e := by
+  ext v
+  constructor
+  · intro h x
+    let er := Lpo.perm_subset e (φ.tests_valid.trans tests_sub_nodes)
+    have hx := h (er x)
+    change (if φ.truth (er.symm (er x)) then Form.literal (er x).val
+      else (Form.literal (er x).val).not) v at hx
+    rw [er.symm_apply_apply] at hx
+    by_cases ht : φ.truth x = true
+    · simp only [ht, if_true, Form.literal] at hx ⊢
+      refine ⟨e ⟨x, φ.tests_valid.trans tests_sub_nodes x.property⟩, ?_, hx⟩
+      exact congrArg Subtype.val (e.symm_apply_apply ⟨x,
+        φ.tests_valid.trans tests_sub_nodes x.property⟩)
+    · simp only [ht] at hx ⊢
+      rintro ⟨z, hz, hv⟩
+      apply hx
+      have heq : z = e ⟨x, φ.tests_valid.trans tests_sub_nodes x.property⟩ := by
+        apply e.symm.injective
+        ext
+        simpa only [Equiv.symm_apply_apply] using hz
+      rw [heq] at hv
+      exact hv
+  · intro h x
+    let er := Lpo.perm_subset e (φ.tests_valid.trans tests_sub_nodes)
+    let y : ↑φ.tests := er.symm x
+    have hy := h y
+    change (if φ.truth y then Form.literal y.val else (Form.literal y.val).not)
+      (Form.image v e.symm) at hy
+    change (if φ.truth (er.symm x) then Form.literal x.val else (Form.literal x.val).not) v
+    by_cases ht : φ.truth y = true
+    · have ht' : φ.truth (er.symm x) = true := ht
+      simp only [ht, if_true, Form.literal] at hy
+      simp only [ht', if_true, Form.literal]
+      rcases hy with ⟨z, hz, hv⟩
+      have hxY : x.val ∈ Y := (φ.permute e).tests_valid x.property |>
+        tests_sub_nodes
+      have heq : z = ⟨x.val, hxY⟩ := by
+        ext
+        calc
+          z.val = (e (e.symm z)).val :=
+            (congrArg Subtype.val (e.apply_symm_apply z)).symm
+          _ = (e ⟨y.val, φ.tests_valid.trans tests_sub_nodes y.property⟩).val := by
+            congr 2
+            exact Subtype.ext hz
+          _ = x.val := by
+            change (er y).val = x.val
+            exact congrArg Subtype.val (er.apply_symm_apply x)
+      rw [congrArg Subtype.val heq] at hv
+      exact hv
+    · have ht' : ¬ φ.truth (er.symm x) = true := ht
+      simp only [ht] at hy
+      simp only [ht']
+      intro hxv
+      apply hy
+      have hxY : x.val ∈ Y := (φ.permute e).tests_valid x.property |>
+        tests_sub_nodes
+      refine ⟨⟨x.val, hxY⟩, ?_, hxv⟩
+      calc
+        (e.symm ⟨x.val, hxY⟩).val = y.val := by
+          have hh := congrArg Subtype.val (er.apply_symm_apply x)
+          change (e ⟨y.val, φ.tests_valid.trans tests_sub_nodes y.property⟩).val = x.val at hh
+          have hs : e.symm ⟨x.val, hxY⟩ =
+              ⟨y.val, φ.tests_valid.trans tests_sub_nodes y.property⟩ := by
+            apply e.injective
+            ext
+            simpa only [e.apply_symm_apply] using hh.symm
+          exact congrArg Subtype.val hs
+        _ = y.val := rfl
+
+lemma cast_toForm {α β : Lpofin (Label act test)}
+    (h : α = β) (φ : PathCond α) :
+    (h ▸ φ).toForm = φ.toForm := by
+  subst β; rfl
+
+lemma permute_mono {α : Lpofin (Label act test)} {Y : Set Node}
+    {φ ψ : PathCond α} (h : φ ≤ ψ) (e : α.nodes ≃ Y) :
+    φ.permute e ≤ ψ.permute e := by
+  rcases h with ⟨hsub, htruth⟩
+  refine ⟨?_, ?_⟩
+  · rintro z ⟨x, rfl⟩
+    refine ⟨⟨x, hsub x.property⟩, ?_⟩
+    simp only [Lpo.perm_subset, Equiv.coe_fn_mk]
+  · intro x
+    simp only [PathCond.permute]
+    apply htruth
+
+lemma tests_subset_of_toForm_eq {α : Lpofin (Label act test)}
+    {φ ψ : PathCond α} (h : φ.toForm = ψ.toForm) : φ.tests ⊆ ψ.tests := by
+  intro z hz
+  by_contra hzψ
+  let w := ψ.sat.choose
+  let v := if φ.truth ⟨z, hz⟩ then w \ {z} else insert z w
+  have hψ : ψ.toForm v := by
+    intro x
+    have hne : x.val ≠ z := by intro heq; exact hzψ (heq ▸ x.property)
+    have hw := ψ.sat.choose_spec x
+    cases heq : ψ.truth x
+    · simp only [heq, Bool.false_eq_true, ↓reduceIte] at hw ⊢
+      simp only [v]; split
+      · exact fun hx ↦ hw hx.1
+      · exact fun hx ↦ hx.elim hne hw
+    · simp only [heq, ↓reduceIte] at hw ⊢
+      simp only [v]; split
+      · exact ⟨hw, hne⟩
+      · exact Or.inr hw
+  have hφ : φ.toForm v := h.symm ▸ hψ
+  have hzv := hφ ⟨z, hz⟩
+  cases heq : φ.truth ⟨z, hz⟩
+  · simp only [heq, Bool.false_eq_true, ↓reduceIte, v] at hzv
+    exact hzv (Set.mem_insert z w)
+  · simp only [heq, ↓reduceIte, v] at hzv
+    exact hzv.2 rfl
+
+lemma tests_eq_of_toForm_eq {α : Lpofin (Label act test)}
+    {φ ψ : PathCond α} (h : φ.toForm = ψ.toForm) : φ.tests = ψ.tests := by
+  apply Set.Subset.antisymm
+  · exact tests_subset_of_toForm_eq h
+  · exact tests_subset_of_toForm_eq h.symm
+
+lemma toForm_injective {α : Lpofin (Label act test)} :
+    Function.Injective (PathCond.toForm (α := α)) := by
+  intro φ ψ h
+  have ht := tests_eq_of_toForm_eq h
+  cases φ with | mk t f hf =>
+    cases ψ with | mk s g hg =>
+      simp only at ht h ⊢
+      subst s
+      congr
+      funext x
+      let φ : PathCond α := ⟨t, f, hf⟩
+      let ψ : PathCond α := ⟨t, g, hg⟩
+      apply PathCond.truth_eq_of_common_sat (φ := φ) (ψ := ψ)
+        φ.sat.choose_spec (h ▸ φ.sat.choose_spec) x.property x.property
+
+lemma permute_symm {α : Lpofin (Label act test)} {Y : Set Node}
+    (φ : PathCond α) (e : α.nodes ≃ Y)
+    (H : (α.permute e).permute e.symm = α) :
+    H ▸ (φ.permute e).permute e.symm = φ := by
+  apply toForm_injective
+  rw [cast_toForm, permute_toForm, permute_toForm]
+  have hd : φ.toForm.DependsOn α.nodes :=
+    Form.DependsOn.monotone φ.toForm (φ.tests_valid.trans tests_sub_nodes) φ.dependsOn
+  exact (Form.permute_trans φ.toForm e e.symm hd).trans <| by
+    rw [e.self_trans_symm, Form.permute_refl φ.toForm hd]
+
+lemma cast_mono {α β : Lpofin (Label act test)} (H : α = β)
+    {φ ψ : PathCond α} (h : φ ≤ ψ) : H ▸ φ ≤ H ▸ ψ := by
+  subst β; exact h
+
+lemma eq_of_tests_eq_of_common_sat {α : Lpofin (Label act test)}
+    {φ ψ : PathCond α} (htests : φ.tests = ψ.tests) {v : Set Node}
+    (hφ : φ.toForm v) (hψ : ψ.toForm v) : φ = ψ := by
+  have ⟨s, f, hf⟩ := φ
+  have ⟨t, g, hg⟩ := ψ
+  dsimp at htests; subst t; congr
+  funext x; exact PathCond.truth_eq_of_common_sat hφ hψ x.property x.property
 
 end PathCond
 

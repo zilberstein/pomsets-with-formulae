@@ -44,7 +44,7 @@ lemma reachable_isotone [Preorder act] [Preorder test] {α β : Lpofin (Label ac
     refine ⟨ψ', ⟨?_, ?_⟩, ?_⟩
     · exact Set.subset_inter hext.1 φ.tests_valid
     · intro x; exact hext.2 x
-    · rw [← PathCond.cast_toForm (hle := hle)]; conv => rhs; exact hle.form x hx
+    · rw [← PathCond.up_cast_toForm (hle := hle)]; conv => rhs; exact hle.form x hx
       refine PathCond.implies_weaken ?_ hform ?_
       · refine ⟨Set.inter_subset_left, fun _ ↦ rfl⟩
       · conv => arg 1; exact (hle.form x hx).symm
@@ -119,7 +119,7 @@ lemma reachableWith_isotone [Preorder act] [Preorder test]
   constructor
   · rintro ⟨ψ, hext, hform⟩
     refine ⟨ψ.up_cast hle, hext, ?_⟩
-    rw [PathCond.cast_toForm]
+    rw [PathCond.up_cast_toForm]
     exact hform.trans (le_form hle)
   · rintro ⟨ψ, hext, hform⟩
     let ψ' : PathCond α := {
@@ -132,7 +132,7 @@ lemma reachableWith_isotone [Preorder act] [Preorder test]
       refine ⟨fun z hz ↦ ⟨hsub hz, φ.tests_valid hz⟩, ?_⟩
       intro z; exact htruth z
     refine ⟨ψ', hext', ?_⟩
-    rw [← PathCond.cast_toForm (hle := hle)]
+    rw [← PathCond.up_cast_toForm (hle := hle)]
     conv => rhs; exact hle.form x hx
     refine PathCond.implies_weaken ?_ hform ?_
     · refine ⟨Set.inter_subset_left, fun _ ↦ rfl⟩
@@ -163,7 +163,7 @@ lemma branches_monotone [PartialOrder act] [PartialOrder test]
   rcases hφ with ⟨htests, hstuck, hmax⟩
   refine ⟨?_, ?_, ?_⟩
   · intro x hx
-    rw [PathCond.cast_toForm]
+    rw [PathCond.up_cast_toForm]
     exact (htests x hx).trans (le_form hle)
   · intro v hφ hβstuck
     apply hstuck v hφ
@@ -200,7 +200,7 @@ lemma le_branches [PartialOrder act] [PartialOrder test] {α β : Lpofin (Label 
   · rintro ⟨hφ', hstuck⟩
     refine ⟨?_, hstuck, ?_⟩
     · intro x hx
-      rw [← PathCond.cast_toForm (hle := hle)]
+      rw [← PathCond.up_cast_toForm (hle := hle)]
       have himp := hφ'.1 x hx
       conv at himp => rhs; exact (hle.form x (tests_sub_nodes (φ.tests_valid hx))).symm
       exact himp
@@ -216,14 +216,6 @@ lemma le_branches [PartialOrder act] [PartialOrder test] {α β : Lpofin (Label 
         apply stuck_antitone hle v
         exact hβ v ((congrFun (hle.form x hxnode) v).mp hα)
       · exact (reachableWith_isotone hle hxnode).mp hreach
-
-lemma pathCond_eq_of_tests_eq_of_common_sat {α : Lpofin (Label act test)}
-    {φ ψ : PathCond α} (htests : φ.tests = ψ.tests) {v : Set Node}
-    (hφ : φ.toForm v) (hψ : ψ.toForm v) : φ = ψ := by
-  have ⟨s, f, hf⟩ := φ
-  have ⟨t, g, hg⟩ := ψ
-  dsimp at htests; subst t; congr
-  funext x; exact PathCond.truth_eq_of_common_sat hφ hψ x.property x.property
 
 lemma branch_tests_subset_of_common_sat {α : Lpofin (Label act test)}
     {φ ψ : PathCond α} (hφ : φ ∈ α.branches) (hψ : ψ ∈ α.branches)
@@ -254,6 +246,6 @@ lemma branches_not_mutually_sat {α : Lpofin (Label act test)} {φ ψ : PathCond
   have hsub₁ := branch_tests_subset_of_common_sat hφ hψ h₁ h₂
   have hsub₂ := branch_tests_subset_of_common_sat hψ hφ h₂ h₁
   apply hneq
-  exact pathCond_eq_of_tests_eq_of_common_sat (Set.Subset.antisymm hsub₁ hsub₂) h₁ h₂
+  exact PathCond.eq_of_tests_eq_of_common_sat (Set.Subset.antisymm hsub₁ hsub₂) h₁ h₂
 
 end Lpofin

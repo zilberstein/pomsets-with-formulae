@@ -89,7 +89,7 @@ lemma seq_monotone_rel (hle : α ≤ α') (hext : f.extends_to g hle)
       exact Set.disjoint_left.mp (g.property _).2.1 (hle.nodes hx) hx'
     · refine Or.inr ⟨ψ, Or.inr ⟨?_, hy⟩⟩
       refine le_of_eq_of_le ?_ (le_of_le_of_eq hform ?_)
-      · conv => lhs; exact (PathCond.cast_toForm (hle := hle)).symm
+      · conv => lhs; exact (PathCond.up_cast_toForm (hle := hle)).symm
         refine congrArg _ ?_
         refine congrArg Subtype.val
           (not_not.mp (((g.property φ').2.2 ⟨ψ.val.up_cast hle, ?_⟩).mt ?_)).symm
@@ -182,7 +182,7 @@ lemma seq_monotone_form (hle : α ≤ α') (hext : f.extends_to g hle)
         subst heq
         exact ⟨⟨φ.val.up_cast hle, branches_monotone hle φ.property⟩,
           (congrFun ((hext _).form _ h) _).mp hψ,
-          (congrFun (PathCond.cast_toForm (φ := φ.val) (hle := hle)) v).mpr hφ⟩
+          (congrFun (PathCond.up_cast_toForm (φ := φ.val) (hle := hle)) v).mpr hφ⟩
     · rintro (hα | ⟨ψ, hform, hψ⟩)
       · exact False.elim (hx₂ ((α'.val.property.form_dom x).mp ⟨v, hα⟩))
       · right
@@ -198,7 +198,7 @@ lemma seq_monotone_form (hle : α ≤ α') (hext : f.extends_to g hle)
             exact heq.symm
           rw [hsub]
           exact hform
-        · rw [← PathCond.cast_toForm (hle := hle), ← heq]
+        · rw [← PathCond.up_cast_toForm (hle := hle), ← heq]
           exact hψ
 
 lemma branch_missing_test_bot_predecessor (hle : α ≤ α') (φ : ↑α'.branches)
@@ -228,7 +228,7 @@ lemma branch_old_tests_bot_predecessor (hle : α ≤ α') (φ : PathCond α)
   by_cases heq : φ.tests = ψ.tests
   · have ⟨v, hsat⟩ := ψ.sat
     have heq :=
-      pathCond_eq_of_tests_eq_of_common_sat heq (PathCond.toForm_antitone hext _ hsat) hsat
+      PathCond.eq_of_tests_eq_of_common_sat heq (PathCond.toForm_antitone hext _ hsat) hsat
     rw [heq]; conv => rhs; exact (hle.form _ hz).symm
     exact himp
   · exfalso; have ⟨_, hstk, hmax⟩ := hφ
