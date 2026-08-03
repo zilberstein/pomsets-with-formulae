@@ -258,7 +258,6 @@ lemma active_branches_singleton
     (hmax : ∀ {x},
         x ∉ φ.tests →
         α.isTest x →
-        ¬ (∀ {ψ}, φ ≤ ψ → α.form x ≤ α.stuck ψ) →
         α.ReachableWith φ x →
         x ∈ u)
     (hemp : α.next u φ.toForm = ∅) :
@@ -271,8 +270,7 @@ lemma active_branches_singleton
     · intro x hx hxt hnstk hr
       refine Finset.nonempty_iff_ne_empty.mp ?_ hemp
       refine α.next_nonempty_of_reachable u φ hu hcomp ?_ hr
-      refine hmax hx hxt ?_ hr
-      intro hstk; apply hnstk; exact hstk (le_refl _)
+      refine hmax hx hxt hr
   use hφ; ext ⟨ψ, hψ⟩; constructor
   · intro h; refine Finset.mem_singleton.mpr ?_; ext1; simp only
     by_contra hne; have := branches_not_mutually_sat hψ hφ hne
@@ -575,10 +573,6 @@ lemma seq_lin_rec_after_alpha_gen
     | Label.test b =>
       refine congrArg₂ Bind.bind rfl ?_; funext r
       rw [seq_filter_after_alpha α β f u φ hu hφ hw hxcopy r, Form.and_assoc]
-      -- have hψ' : (ψ.and (if r then Form.literal x else (Form.literal x).not)).DependsOn
-      --     (f ⟨φ, hφ⟩).nodes := by
-      --   have := Form.DependsOn.and hψ (copy_literal_dependsOn α β f ⟨φ, hφ⟩ hxcopy r)
-      --   rwa [Set.union_self] at this
       refine congrFun (ih ((f ⟨φ, hφ⟩).filter_by_outcome w x r) ?_ ?_ _ ?_ ?_) σ
       · exact Finset.ssubset_of_subset_of_ssubset filter_by_outcome_sub_erase
           (Finset.erase_ssubset hxw)
@@ -612,8 +606,7 @@ lemma seq_lin_rec_after_alpha
     (hcomp : ∀ z ∈ α.tests, ∀ y ∈ u, α.rel z y → z ∉ u → z ∈ φ.tests)
     (hreach : ∀ z ∈ φ.tests, φ.toForm ≤ α.form z)
     (hbots : ∀ x ∈ α.val.bots, α.ReachableWith φ x → x ∈ u)
-    (hmax : ∀ {x}, x ∉ φ.tests → α.isTest x →
-      ¬ (∀ {ψ}, φ ≤ ψ → α.form x ≤ α.stuck ψ) → α.ReachableWith φ x → x ∈ u)
+    (hmax : ∀ {x}, x ∉ φ.tests → α.isTest x → α.ReachableWith φ x → x ∈ u)
     (hemp : α.next u φ.toForm = ∅) :
     ((α.seq β f).lin_rec (α.seq_nodes β f u φ) φ.toForm : s → t s) = lin β := by
   obtain ⟨hφ, hactive⟩ := α.active_branches_singleton u φ hu hcomp hreach hbots hmax hemp
@@ -768,13 +761,18 @@ lemma lin_rec_seq
     -- Completeness: all tests below `u` must be accounted for in the
     -- path condition `φ`
     (hcomp : ∀ z ∈ α.tests, ∀ y ∈ u, α.rel z y → z ∉ u → z ∈ φ.tests)
+    -- Reachability: all tests in the path condition are reachable via
+    -- the path condition
     (hreach : ∀ z ∈ φ.tests, φ.toForm ≤ α.form z)
+    -- The path condition is disjoint from `u`
     (hdisj : Disjoint (↑u : Set Node) φ.tests)
+    -- All reachable `⊥` nodes have not yet been processed
     (hbots : ∀ x ∈ α.val.bots, α.ReachableWith φ x → x ∈ u)
+    -- Maximality: all reachable tests that are compatible with the
+    -- path condition are still in `u`
     (hmax : ∀ {x},
         x ∉ φ.tests →
         α.isTest x →
-        ¬ (∀ {ψ}, φ ≤ ψ → α.form x ≤ α.stuck ψ) →
         α.ReachableWith φ x →
         x ∈ u) :
     (lin_rec (seq α β f) (seq_nodes α β f u φ) φ.toForm : s → t s) =
@@ -812,7 +810,7 @@ lemma lin_rec_seq
           exact Set.disjoint_left.mp hdisj (Finset.erase_subset x u hz) hzφ
         · intro z hz hr; refine Finset.mem_erase.mpr ⟨?_, hbots z hz hr⟩
           rintro rfl; have := hz.2.symm.trans hl; contradiction
-        · intro z hz hzt hnstk hr; refine Finset.mem_erase.mpr ⟨?_, hmax hz hzt hnstk hr⟩
+        · intro z hz hzt hr; refine Finset.mem_erase.mpr ⟨?_, hmax hz hzt hr⟩
           rintro rfl; have ⟨_, heq⟩ := (Label.isTest_iff _).mp hzt
           rw [heq] at hl; contradiction
       | act a =>
@@ -832,7 +830,7 @@ lemma lin_rec_seq
           exact Set.disjoint_left.mp hdisj (Finset.erase_subset x u hz) hzφ
         · intro z hz hr; refine Finset.mem_erase.mpr ⟨?_, hbots z hz hr⟩
           rintro rfl; have := hz.2.symm.trans hl; contradiction
-        · intro z hz hzt hnstk hr; refine Finset.mem_erase.mpr ⟨?_, hmax hz hzt hnstk hr⟩
+        · intro z hz hzt hr; refine Finset.mem_erase.mpr ⟨?_, hmax hz hzt hr⟩
           rintro rfl; have ⟨_, heq⟩ := (Label.isTest_iff _).mp hzt
           rw [heq] at hl; contradiction
       | test b =>
@@ -877,14 +875,12 @@ lemma lin_rec_seq
             have hform := PathCond.toForm_antitone hext _ hψ ⟨x, Set.mem_insert _ _⟩
             conv at hform => simp only; arg 1; lhs; exact dif_pos rfl
             rwa [Bool.cond_eq_ite]
-        · intro z hz hzt hnstk hr
+        · intro z hz hzt hr
           refine Finset.mem_filter.mpr ⟨Finset.mem_erase.mpr ⟨?_, ?_⟩, ?_⟩
           · rintro rfl; apply hz; exact Set.mem_insert _ _
-          · refine hmax ?_ hzt ?_ ?_
+          · refine hmax ?_ hzt ?_
             · intro h; apply hz
               exact Set.mem_insert_of_mem _ h
-            · intro hstk; apply hnstk; intro ψ hext
-              apply hstk; exact (φ.extend_le hx_nt _ _).trans hext
             · have ⟨ψ, hext, himp⟩ := hr
               refine ⟨ψ, ?_, himp⟩
               exact (φ.extend_le hx_nt _ _).trans hext
@@ -905,6 +901,6 @@ lemma lin_seq :
   · intro z hz; exfalso; exact Set.notMem_empty _ hz
   · exact Set.disjoint_empty _
   · intro z ⟨hz, _⟩ _; exact α.property.mem_toFinset.mpr hz
-  · intro z _ hz _ _; exact α.property.mem_toFinset.mpr <| tests_sub_nodes hz
+  · intro z _ hz _; exact α.property.mem_toFinset.mpr <| tests_sub_nodes hz
 
 end Lpofin
