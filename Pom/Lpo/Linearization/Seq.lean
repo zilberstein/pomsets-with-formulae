@@ -496,12 +496,10 @@ lemma seq_lin_rec_after_alpha
   obtain ⟨hφ, hactive⟩ := α.active_branches_singleton u φ hu hcomp hreach hbots hmax hemp
   rw [← lin_isomorphic (f.property ⟨φ, hφ⟩).1]
   have hnodes : α.seq_nodes β f u φ = u ∪ (f ⟨φ, hφ⟩).nodes_finset := by
-    unfold seq_nodes
-    rw [hactive]
-    ext x
+    unfold seq_nodes; rw [hactive]; ext x
     simp only [Finset.mem_union, Finset.mem_biUnion, Finset.mem_singleton]
     constructor
-    · rintro (hx | ⟨ψ, rfl, hx⟩) <;> simp_all
+    · rintro (hx | ⟨ψ, rfl, hx⟩) <;> simp_all only [true_or, or_true]
     · rintro (hx | hx)
       · exact Or.inl hx
       · exact Or.inr ⟨⟨φ, hφ⟩, rfl, hx⟩
@@ -515,7 +513,7 @@ lemma seq_lin_rec_after_alpha
 /-- An active branch compatible with the outcome of a ready test extends the path
 condition updated by that outcome. -/
 lemma extend_le_branch_of_outcome_sat
-    (φ : PathCond α) {x : Node} (hx : x ∈ α.next u φ.toForm)
+    (φ : PathCond α) {u : Finset Node} {x : Node} (hx : x ∈ α.next u φ.toForm)
     (hxt : α.isTest x) (hx_nt : x ∉ φ.tests)
     (r : Bool) (ψ : α.branches) (hφψ : φ ≤ ψ.val)
     (hsat : (ψ.val.toForm.and
@@ -526,11 +524,9 @@ lemma extend_le_branch_of_outcome_sat
   have hxψ : x ∈ ψ.val.tests := by
     by_contra hxnot
     have hr : α.ReachableWith ψ.val x := by
-      refine ⟨ψ.val, le_refl _, ?_⟩
-      exact (PathCond.toForm_antitone hφψ).trans hximp
+      refine ⟨ψ.val, le_refl _, ?_⟩; exact (PathCond.toForm_antitone hφψ).trans hximp
     apply ψ.property.2.2 hxnot hxt
-    · intro hstuck
-      obtain ⟨v, hψv, hlit⟩ := hsat
+    · intro hstuck; obtain ⟨v, hψv, hlit⟩ := hsat
       exact ψ.property.2.1 v hψv (hstuck v ((PathCond.toForm_antitone hφψ).trans hximp v hψv))
     · exact hr
   refine ⟨?_, ?_⟩
@@ -538,12 +534,10 @@ lemma extend_le_branch_of_outcome_sat
     rcases hz with rfl | hz
     · exact hxψ
     · exact hφψ.1 hz
-  · intro z
-    rcases z with ⟨z, rfl | hz⟩
+  · intro z; rcases z with ⟨z, rfl | hz⟩
     · obtain ⟨v, hψv, hlit⟩ := hsat
       simp only [PathCond.extend, dif_pos]
-      apply Bool.eq_iff_iff.mpr
-      rw [ψ.val.truth_iff_mem hψv]
+      apply Bool.eq_iff_iff.mpr; rw [ψ.val.truth_iff_mem hψv]
       cases r
       · simp only [Bool.false_eq_true]
         constructor
@@ -554,12 +548,10 @@ lemma extend_le_branch_of_outcome_sat
               Set.mem_singleton_iff] using hlit
           exact this hzv
       · constructor
-        · intro _
-          simpa only [cond_true, Form.literal, Set.mem_singleton_iff] using hlit
+        · intro _; simpa only [cond_true, Form.literal, Set.mem_singleton_iff] using hlit
         · intro _; trivial
     · have hne : z ≠ x := fun h ↦ hx_nt (h ▸ hz)
-      simp only [PathCond.extend, dif_neg hne]
-      exact hφψ.2 ⟨z, hz⟩
+      simp only [PathCond.extend, dif_neg hne]; exact hφψ.2 ⟨z, hz⟩
 
 /-- Filtering after observing a ready test distributes over the `α` part and the copies,
 with the active branches updated by extending the path condition. -/
@@ -610,24 +602,19 @@ lemma seq_filter_by_outcome_nodes
 /-- The full node set of a sequence is its `seq_nodes` set at the empty path condition. -/
 lemma seq_nodes_finset_eq (α β : Lpofin (Label act test)) (f : CopyFn α β) :
     (α.seq β f).nodes_finset = α.seq_nodes β f α.nodes_finset ⊥ := by
-  classical
-  ext x
+  classical ext x
   simp only [Lpofin.nodes_finset, Lpo.nodes, seq, seq_base, Set.Finite.mem_toFinset,
     seq_nodes, Finset.mem_union, mem_active, bot_le, Finset.mem_biUnion, true_and]
   constructor
-  · rintro (hx | hx)
+  · rintro (hx | ⟨_, ⟨⟨ψ, rfl⟩, hxψ⟩⟩)
     · exact Or.inl hx
-    · right
-      rcases Set.mem_iUnion.mp hx with ⟨ψ, hxψ⟩
-      exact ⟨ψ, hxψ⟩
+    · right; exact ⟨ψ, hxψ⟩
   · rintro (hx | ⟨ψ, hxψ⟩)
     · exact Or.inl hx
     · exact Or.inr (Set.mem_iUnion.mpr ⟨ψ, hxψ⟩)
 
 lemma lin_node_seq
-    (u : Finset Node)
-    (φ : PathCond α)
-    (hu : ↑u ⊆ α.nodes)
+    (u : Finset Node) (φ : PathCond α) (hu : ↑u ⊆ α.nodes)
     (hdisj : Disjoint (↑u : Set Node) φ.tests)
     {x : Node} {σ : s} (hx : x ∈ u)
     (ih_plain :
@@ -717,14 +704,12 @@ lemma lin_rec_seq
         refine ih _ ?_ _ ?_ ?_ ?_ ?_ ?_ ?_
         · exact ssubset_of_subset_of_ssubset filter_by_outcome_sub_erase <| Finset.erase_ssubset hxu
         · intro y hy; exact hu <| Finset.erase_subset _ _ <| filter_by_outcome_sub_erase hy
-        · intro z hz y hy hzy hz'
-          by_cases heq : z = x
+        · intro z hz y hy hzy hz'; by_cases heq : z = x
           · subst heq; exact Set.mem_insert _ _
           · refine Set.mem_insert_of_mem _ ?_
             have ⟨hy, ⟨v, hyf, hv⟩⟩ := Finset.mem_filter.mp hy
             have ⟨hne, hy⟩ := Finset.mem_erase.mp hy
-            refine hcomp _ hz _ hy hzy ?_
-            intro hzu
+            refine hcomp _ hz _ hy hzy ?_; intro hzu
             apply (Finset.mem_filter.mpr.mt hz' |> not_and.mp) <| Finset.mem_erase.mpr ⟨heq, hzu⟩
             refine ⟨v, ?_, hv⟩; exact (α.val.property.form _ (hu hzu)).2 _ hzy _ hyf
         · rintro z hz; refine (PathCond.toForm_antitone <| φ.extend_le hx_nt _ _).trans ?_
