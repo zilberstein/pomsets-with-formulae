@@ -43,8 +43,9 @@ class Sem (c : Type) (in_type out_type : Type) [Preorder c] [Preorder out_type] 
 
   sem_mono : Monotone sem
 
-class ContinuousMonad (t : Type → Type) [Monad t] [∀ α, OmegaCompletePartialOrder (t α)] where
-  bind_mono {α β : Type} [Monad t] :
+class ContinuousMonad (t : Type → Type) [Monad t]
+    [∀ α, OmegaCompletePartialOrder (t α)] [∀ α, Bot (t α)] where
+  bind_mono {α β : Type} :
     ∀ {m₁ m₂ : t α} {k₁ k₂ : α → t β}, m₁ ≤ m₂ → k₁ ≤ k₂ → (m₁ >>= k₁) ≤ (m₂ >>= k₂)
   bind_continuous {α β : Type}  :
     ∀ {c₁ : Chain (t α)} {c₂ : Chain (α → t β)},
@@ -52,10 +53,11 @@ class ContinuousMonad (t : Type → Type) [Monad t] [∀ α, OmegaCompletePartia
         toFun n := c₁ n >>= c₂ n
         monotone' _ _ hle := bind_mono (c₁.monotone' hle) (c₂.monotone' hle)
       }
-  bind_strict {α β : Type} [Monad t] [Bot (t α)] [Bot (t β)] :
+  bind_strict {α β : Type} :
     ∀ {f : α → t β}, ⊥ >>= f = ⊥
 
-class Linearizable (t : Type → Type) (α : Type) [∀ α, OmegaCompletePartialOrder (t α)]
+class Linearizable (t : Type → Type) (α : Type)
+  [∀ α, OmegaCompletePartialOrder (t α)] [∀ α, Bot (t α)]
   extends Monad t, ContinuousMonad t, LawfulMonad t, Nondet (t α) where
   nondet_mono {ι : Type} [Finite ι] : Monotone (@nondet ι _)
   nondet_continuous {ι : Type} [Finite ι] : ωScottContinuous (@nondet ι _)
