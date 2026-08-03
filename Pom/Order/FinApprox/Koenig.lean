@@ -351,7 +351,7 @@ theorem pom_ge_iff_ge_fin {l : Type} [DCPO l] [OrderBot l] {p q : Pom l}
     · intro x
       exact (TreeNode.le_iff.mp (hf hle)).2.2
         ⟨x, by unfold TreeNode.dom; rw [hn i]; exact Subtype.coe_prop _⟩
-    · refine (congrArg₂ (· ⊆ ·) ?_ ?_).mp (TreeNode.le_iff.mp (hf hle)).2.1
+    · refine (congrArg₂ _ ?_ ?_).mp (TreeNode.le_iff.mp (hf hle)).2.1
       all_goals { unfold TreeNode.dom; rw [hn]; rfl }
   -- Build a new chain by permuting truncations
   let c : Chain (Lpo l) := {

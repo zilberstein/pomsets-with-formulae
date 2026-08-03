@@ -109,7 +109,7 @@ namespace Rel
 def permute {X Y : Set Node} (r : Rel Node Node) (e : X ≃ Y) : Rel Node Node :=
   fun x y ↦ ∃ hx hy, r (e.symm ⟨x, hx⟩) (e.symm ⟨y, hy⟩)
 
-def permute_lev {X Y : Set Node} (r : Rel Node Node) (e : X ≃ Y)
+lemma permute_lev {X Y : Set Node} (r : Rel Node Node) (e : X ≃ Y)
     {x : Node} (hx : x ∈ X)
     (h : ∀ {x y}, r x y → x ∈ X ∧ y ∈ X) :
     r.lev x = (r.permute e).lev (e ⟨_, hx⟩).val := by

@@ -107,7 +107,7 @@ lemma next_nonempty_of_reachable
   have ⟨ψ, hext, himp⟩ := hr
   classical
   have ⟨z, hz, hmin⟩ :=
-    @Finset.exists_minimal _ ⟨α.rel⟩ ⟨fun _ _ _ ↦ α.val.property.rel.trans⟩
+    @Finset.exists_minimal _ ⟨α.rel⟩ ⟨fun _ _ _ hle₁ hle₂ ↦ α.val.property.rel.trans hle₂ hle₁⟩
       { y ∈ u | y = x ∨ α.rel y x }
       ⟨x, Finset.mem_filter.mpr ⟨hx, Or.inl rfl⟩⟩
   have ⟨hz, hzx⟩ := Finset.mem_filter.mp hz
@@ -175,7 +175,7 @@ lemma no_guarded_alpha_node_of_next_empty
     (hxu : x ∈ u) (hguard : φ.toForm ≤ α.form x) : False := by
   classical
   have ⟨z, hz, hmin⟩ :=
-    @Finset.exists_minimal _ ⟨α.rel⟩ ⟨fun _ _ _ ↦ α.val.property.rel.trans⟩
+    @Finset.exists_minimal _ ⟨α.rel⟩ ⟨fun _ _ _ hle₁ hle₂ ↦ α.val.property.rel.trans hle₂ hle₁⟩
       { y ∈ u | y = x ∨ α.rel y x }
       ⟨x, Finset.mem_filter.mpr ⟨hxu, Or.inl rfl⟩⟩
   have ⟨hzu, hzx⟩ := Finset.mem_filter.mp hz

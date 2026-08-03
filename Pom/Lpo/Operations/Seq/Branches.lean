@@ -58,7 +58,7 @@ lemma reachable_isotone [Preorder act] [Preorder test] {α β : Lpofin (Label ac
         | act a => have := le_of_eq_of_le hy.symm hlab; contradiction
         | test t => exact (Label.isTest_iff _).mpr ⟨t, hy⟩
 
-def reachable_pred {α : Lpofin (Label act test)} {x z : Node} {φ : PathCond α}
+lemma reachable_pred {α : Lpofin (Label act test)} {x z : Node} {φ : PathCond α}
     (hr : α.ReachableWith φ x) (hz : α.rel z x) : α.ReachableWith φ z := by
   rcases hr with ⟨ψ, hext, hform⟩
   refine ⟨ψ, hext, ?_⟩
