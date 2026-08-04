@@ -1,5 +1,6 @@
 import Pom.Lpo.Basic
 import Pom.Lpo.Isomorphism
+import Pom.Lpo.Functor
 import Pom.Lpo.Order.FinApprox
 
 def Pom (l : Type) [Bot l] : Type := Quotient (@Lpo.instSetoid l _)
@@ -45,5 +46,12 @@ lemma singleton_equiv {l : Type} [Bot l] {x y : Node} (ℓ : l) :
         conv => exact congrFun (if_pos rfl) _
         trivial
       · simp only [heq, ↓reduceIte] at h; exfalso; exact h
+
+def map_lab {l l' : Type} [Bot l] [Bot l'] {f : l → l'} (p : Pom l)
+    (hstrict : ∀ x, x = ⊥ ↔ f x = ⊥) : Pom l' :=
+  Quotient.map
+    (fun α ↦ α.map f hstrict)
+    (fun α β h ↦ Lpo.map_isomorphic α β hstrict h)
+    p
 
 end Pom
