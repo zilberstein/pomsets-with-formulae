@@ -10,8 +10,8 @@ open Linearization
 
 variable {t : Type → Type} {st act test : Type}
   [∀ β, OmegaCompletePartialOrder (t β)] [∀ β, OrderBot (t β)] [Linearizable t st]
-  [DCPO act] [Sem act st (t st)]
-  [DCPO test] [Sem test st (t Bool)]
+  [DCPO act] [MonoSem act st (t st)]
+  [DCPO test] [MonoSem test st (t Bool)]
 
 def skip : Pom (Label act test) := Pom.singleton Label.fork
 

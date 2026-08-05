@@ -12,8 +12,8 @@ open OmegaCompletePartialOrder
 lemma lin_guard {t : Type → Type} {s act test : Type}
     [∀ {β : Type}, OmegaCompletePartialOrder (t β)] [∀ {β : Type}, OrderBot (t β)]
     [Linearizable t s]
-    [DCPO act] [ScottCompact act] [Sem act s (t s)]
-    [DCPO test] [ScottCompact test] [Sem test s (t Bool)]
+    [DCPO act] [ScottCompact act] [MonoSem act s (t s)]
+    [DCPO test] [ScottCompact test] [MonoSem test s (t Bool)]
     (p q : Pom (Label act test)) (b : test) :
     (lin (guard (Label.test_ne_bot b) p q) : s → t s) =
     fun σ ↦ Sem.sem b σ >>= fun r ↦ bif r then lin p σ else lin q σ := by

@@ -2,22 +2,27 @@ import Pom.Order.OmegaCompletePartialOrder
 
 namespace Pom
 
-variable {l : Type} [DCPO l] [OrderBot l] [ScottCompact l]
+variable {l : Type}
 
 open OmegaCompletePartialOrder
 
-noncomputable def ext {X : Type} [OmegaCompletePartialOrder X]
+noncomputable def ext {X : Type} [PartialOrder l] [OrderBot l] [OmegaCompletePartialOrder X]
     (f : Pomfin l → X) (hf : Monotone f) (p : Pom l) : X :=
   ωSup {
     toFun n := f (p.trunc n)
     monotone' _ _ hle := hf (trunc_mono (le_refl _) hle)
   }
 
-theorem ext_continuous {X : Type} [OmegaCompletePartialOrder X] {f : Pomfin l → X}
+lemma ext_monotone {X : Type} [OmegaCompletePartialOrder X] [PartialOrder l] [OrderBot l]
+   (f : Pomfin l → X) (hf : Monotone f) : Monotone (ext f hf) := by
+  intro p q hle; refine ωSup_le_ωSup_of_le ?_
+  intro n; use n; exact hf (trunc_mono hle (le_refl _))
+
+theorem ext_continuous {X : Type} [OmegaCompletePartialOrder X]
+    [DCPO l] [OrderBot l] [ScottCompact l]
+    {f : Pomfin l → X}
     (hf : Monotone f) : ωScottContinuous (ext _ hf) := by
-  have hmono : Monotone (ext f hf) := by
-    intro p q hle; refine ωSup_le_ωSup_of_le ?_
-    intro n; use n; exact hf (trunc_mono hle (le_refl _))
+  have hmono := ext_monotone f hf
   refine ωScottContinuous.of_monotone_map_ωSup ⟨hmono, ?_⟩
   intro c; refine le_antisymm ?_ ?_
   · refine ωSup_le _ _ ?_; intro n
@@ -28,7 +33,7 @@ theorem ext_continuous {X : Type} [OmegaCompletePartialOrder X] {f : Pomfin l �
     simp only [Chain.coe_map, OrderHom.coe_mk, Function.comp_apply]
     exact hmono (le_ωSup _ _)
 
-noncomputable def ext₂ {X : Type} [OmegaCompletePartialOrder X]
+noncomputable def ext₂ {X : Type} [OmegaCompletePartialOrder X] [PartialOrder l] [OrderBot l]
     (f : Pomfin l → Pomfin l → X)
     (hf : ∀ {p p' q q'}, p ≤ p' → q ≤ q' → f p q ≤ f p' q') (p q : Pom l) : X :=
   ωSup {
@@ -36,8 +41,7 @@ noncomputable def ext₂ {X : Type} [OmegaCompletePartialOrder X]
     monotone' _ _ hle := hf (trunc_mono (le_refl _) hle) (trunc_mono (le_refl _) hle)
   }
 
-omit [ScottCompact l] in
-theorem ext₂_monotone {X : Type} [OmegaCompletePartialOrder X]
+theorem ext₂_monotone {X : Type} [OmegaCompletePartialOrder X] [PartialOrder l] [OrderBot l]
     {f : Pomfin l → Pomfin l → X}
     {hf : ∀ {p p' q q'}, p ≤ p' → q ≤ q' → f p q ≤ f p' q'} {p p' q q' : Pom l}
     (hle : p ≤ p') (hle' : q ≤ q') :
@@ -46,6 +50,7 @@ theorem ext₂_monotone {X : Type} [OmegaCompletePartialOrder X]
   refine hf ?_ ?_ <;> refine Pom.trunc_mono ?_ (le_refl _) <;> assumption
 
 theorem ext₂_continuous {X : Type} [OmegaCompletePartialOrder X]
+    [DCPO l] [OrderBot l] [ScottCompact l]
     {f : Pomfin l → Pomfin l → X}
     {hf : ∀ {p p' q q'}, p ≤ p' → q ≤ q' → f p q ≤ f p' q'} {c c' : Chain (Pom l)} :
     ext₂ f hf (ωSup c) (ωSup c') = ωSup {
@@ -65,7 +70,9 @@ theorem ext₂_continuous {X : Type} [OmegaCompletePartialOrder X]
   · refine ωSup_le _ _ ?_; intro n
     refine ext₂_monotone ?_ ?_ <;> exact le_ωSup _ _
 
-lemma continuous_of_trunc_le_ext₂ {f : Pom l → Pom l → Pom l}
+lemma continuous_of_trunc_le_ext₂
+    [DCPO l] [OrderBot l] [ScottCompact l]
+    {f : Pom l → Pom l → Pom l}
     (hmono : ∀ {p p' q q'}, p ≤ p' → q ≤ q' → f p q ≤ f p' q')
     (hub : ∀ {p q} n, (f p q).trunc n ≤ ext₂ _ hmono p q)
     (c₁ c₂ : Chain (Pom l)) :
@@ -80,10 +87,8 @@ lemma continuous_of_trunc_le_ext₂ {f : Pom l → Pom l → Pom l}
   refine heq.trans <| ext₂_continuous.trans (congrArg ωSup ?_)
   ext n; exact heq.symm
 
-omit [ScottCompact l] in
-lemma ext_eq_fin {X : Type} [OmegaCompletePartialOrder X] {f : Pomfin l → X}
-    (hf : Monotone f)
-    (p : Pomfin l) :
+lemma ext_eq_fin {X : Type} [OmegaCompletePartialOrder X] [PartialOrder l] [OrderBot l]
+    {f : Pomfin l → X} (hf : Monotone f) (p : Pomfin l) :
     ext f hf p.to_pom = f p := by
   refine le_antisymm ?_ ?_
   · refine ωSup_le _ _ ?_; intro i; exact hf <| Pom.trunc_le _ _

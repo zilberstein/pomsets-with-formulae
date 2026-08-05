@@ -11,8 +11,8 @@ namespace Pomfin
 lemma lin_seq {t : Type → Type} {s act test : Type}
     [∀ {β : Type}, OmegaCompletePartialOrder (t β)] [∀ {β : Type}, OrderBot (t β)]
     [Linearizable t s]
-    [PartialOrder act] [Sem act s (t s)]
-    [PartialOrder test] [Sem test s (t Bool)]
+    [Preorder act] [Sem act s (t s)]
+    [Preorder test] [Sem test s (t Bool)]
     (p q : Pomfin (Label act test)) :
     (lin t s _ _ (seq p q) : s → t s) = fun σ ↦ lin _ _ _ _ p σ >>= lin _ _ _ _ q := by
   obtain ⟨α, β, f, rfl, rfl, heq⟩ := exists_rep_seq p q
@@ -30,8 +30,8 @@ open OmegaCompletePartialOrder
 theorem lin_seq {t : Type → Type} {s act test : Type}
     [∀ {β : Type}, OmegaCompletePartialOrder (t β)] [∀ {β : Type}, OrderBot (t β)]
     [Linearizable t s]
-    [DCPO act] [ScottCompact act] [Sem act s (t s)]
-    [DCPO test] [ScottCompact test] [Sem test s (t Bool)]
+    [DCPO act] [ScottCompact act] [MonoSem act s (t s)]
+    [DCPO test] [ScottCompact test] [MonoSem test s (t Bool)]
     (p q : Pom (Label act test)) :
     (lin (seq p q) : s → t s) = fun σ ↦ lin p σ >>= lin q := by
   ext σ; unfold seq

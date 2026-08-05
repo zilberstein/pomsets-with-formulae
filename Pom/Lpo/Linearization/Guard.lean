@@ -236,10 +236,8 @@ lemma guard_left_filter {act test : Type}
         · exact hb hv
 
 lemma lin_rec_guard_left_aux {t : Type → Type} {s act test : Type}
-    [∀ {β : Type}, OmegaCompletePartialOrder (t β)] [∀ {β : Type}, OrderBot (t β)]
-    [Linearizable t s]
-    [Preorder act] [Sem act s (t s)]
-    [Preorder test] [Sem test s (t Bool)]
+    [Monad t] [Nondet (t s)] [Bot (t s)]
+    [Sem act s (t s)] [Sem test s (t Bool)]
     (p q : Lpofin (Label act test)) (b : test)
     {x : Node} (hx : x ∉ p.nodes) (hx' : x ∉ q.nodes)
     (hd : Disjoint p.nodes q.nodes) (u : Finset Node) (φ : Form Node)
@@ -408,10 +406,8 @@ lemma guard_right_filter {act test : Type}
         exact hb ((Set.mem_sdiff y).mp h).1
 
 lemma lin_rec_guard_right_aux {t : Type → Type} {s act test : Type}
-    [∀ {β : Type}, OmegaCompletePartialOrder (t β)] [∀ {β : Type}, OrderBot (t β)]
-    [Linearizable t s]
-    [Preorder act] [Sem act s (t s)]
-    [Preorder test] [Sem test s (t Bool)]
+    [Monad t] [Nondet (t s)] [Bot (t s)]
+    [Sem act s (t s)] [Sem test s (t Bool)]
     (p q : Lpofin (Label act test)) (b : test)
     {x : Node} (hx : x ∉ p.nodes) (hx' : x ∉ q.nodes)
     (hd : Disjoint p.nodes q.nodes) (u : Finset Node) (φ : Form Node)
@@ -458,10 +454,8 @@ lemma lin_rec_guard_right_aux {t : Type → Type} {s act test : Type}
           (fun z hz ↦ hu (filter_by_outcome_sub_erase hz |> Finset.mem_of_mem_erase))) σ
 
 lemma lin_guard_branch {t : Type → Type} {s act test : Type}
-    [∀ {β : Type}, OmegaCompletePartialOrder (t β)] [∀ {β : Type}, OrderBot (t β)]
-    [Linearizable t s]
-    [Preorder act] [Sem act s (t s)]
-    [Preorder test] [Sem test s (t Bool)]
+    [Monad t] [Nondet (t s)] [Bot (t s)]
+    [Sem act s (t s)] [Sem test s (t Bool)]
     (p q : Lpofin (Label act test)) (b : test) (σ : s) (r : Bool)
     {x : Node} (hx : x ∉ p.nodes) (hx' : x ∉ q.nodes)
     (hd : Disjoint p.nodes q.nodes) :
@@ -481,10 +475,8 @@ lemma lin_guard_branch {t : Type → Type} {s act test : Type}
     intro x hx; exact p.property.mem_toFinset.mp hx
 
 lemma lin_guard {t : Type → Type} {s act test : Type}
-    [∀ {β : Type}, OmegaCompletePartialOrder (t β)] [∀ {β : Type}, OrderBot (t β)]
-    [Linearizable t s]
-    [Preorder act] [Sem act s (t s)]
-    [Preorder test] [Sem test s (t Bool)]
+    [Monad t] [Nondet (t s)] [Bot (t s)]
+    [Sem act s (t s)] [Sem test s (t Bool)]
     {p q : Lpofin (Label act test)} {b : test}
     {x : Node} {hx : x ∉ p.nodes} {hx' : x ∉ q.nodes}
     {hd : Disjoint p.nodes q.nodes} :
